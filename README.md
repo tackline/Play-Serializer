@@ -40,8 +40,12 @@ Things we don't like in reflection API
  - Similarly forced checked exception IllegalArgumentException even for a nullary.
  - Also InstantiationException ("not limited to" indeed).
  - InvovationTargetExcpetion and rethrowing even if we've checked checked excpeption clauses.
+ - Test of type separate from safe usage, IYSWIM.
 
 Anything else.
 
  - I wrote `name == "."`. Idiot.
  - github is a miserable piece of junk.
+ - Writting the serializer/deserializer as an object and recrusing within same instance is cool, but don't expose that to the client or more particularly to the serialized/deserialized objects.
+ - Primitives - bleurgh.
+ - Given that there are primitives, more utility methods? Or not.

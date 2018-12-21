@@ -3,9 +3,29 @@ package tackline.play.serialize;
 import java.io.*;
 
 public class TestDrive {
-
+   public static class WithPrimitiveArray {
+      private int[][] array;
+      public WithPrimitiveArray() { // for serial
+      }
+      /* pp */ WithPrimitiveArray(int[][] array) { // for us
+         this.array = array;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof WithPrimitiveArray &&
+            java.util.Objects.deepEquals(((WithPrimitiveArray)other).array, array);
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return java.util.Arrays.toString(array);
+      }
+   }
+   
    public static void main(String[] args) {
       check(new java.awt.Point(1, 2));
+      check(new WithPrimitiveArray(new int[][] {{ 1, 2 }, { 3, 4 }}));
    }
    private static void check(Object obj){
       ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
@@ -23,7 +43,7 @@ public class TestDrive {
       } catch (IOException exc) {
          throw new Error(exc);
       }
-      if (!obj.equals(copy)) {
+      if (!java.util.Objects.deepEquals(obj, copy)) {
          throw new AssertionError("expected <"+obj+"> was <"+copy+">");
       }
    }

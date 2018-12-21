@@ -10,7 +10,7 @@ class FieldCommon {
       if (Modifier.isAbstract(clazz.getModifiers())) {
          throw new IllegalArgumentException("Cannot construct abstract class");
       }
-      if (Modifier.isPublic(clazz.getModifiers())) {
+      if (!Modifier.isPublic(clazz.getModifiers())) {
          throw new IllegalArgumentException("Cannot construct a non-public class");
       }
       try {
