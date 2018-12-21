@@ -15,15 +15,20 @@ Non-goals
  - Nice errors.
  - Efficiency.
  - Worry too much about the likes of long functions.
+ - Do any dodgy `Class.forName`ing from stream data - static typing, cafebabe!
 
 Current state
 
+ - Writes a dag according to static type information.
+ - Checks for cycles.
  - Reads/writes fields of an object.
  - Reads/writes arrays elements.
  - Checks types have not changed.
  - Checks names.
  - Constructs object through nullary constructor.
  - Constructs arrays.
+ - Detects same object referred to by references of different static types.
+ - Handle null.
 
 Things it does not do
 
@@ -32,9 +37,8 @@ Things it does not do
  - Check type parameters.
  - Class hierarchies.
  - Write class info only once.
- - Ensure fields in stream match set of fields in runtime class and are in order with no repeats. (Thanks Sami.)
- - Handle same object used multiple times.
- - Hnalde cycles.
+ - Ensure fields in stream match set of fields in runtime class and are in order with no repeats. (Thanks Sami.) 
+ - Handle cycles.
 
 Things we don't like in reflection API
 
@@ -55,3 +59,6 @@ Anything else.
  - Writting the serializer/deserializer as an object and recrusing within same instance is cool, but don't expose that to the client or more particularly to the serialized/deserialized objects.
  - Primitives - bleurgh.
  - Given that there are primitives, more utility methods? Or not.
+ - I'm really thinking about serializing through public interfaces here, without downcasting nastiness.
+ - Fun thing: If you try to read junk, that's an IOException; try to write junk and that's an IllegalArgumentException.
+ - I used a generic constructor! (though not for anything particularly useuful)

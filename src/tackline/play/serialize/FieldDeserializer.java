@@ -6,6 +6,15 @@ import java.util.*;
 import java.util.stream.*;
 
 public final class FieldDeserializer {
+   private static class Ref {
+      private final Class<?> type;
+      private final Object obj;
+      public <T> Ref(Class<T> type, T obj) {
+         this.type = type;
+         this.obj = obj;
+      }
+   }
+   private final Map<Long,Ref> backRefs = new HashMap<>();
    private final DataInput in;
    private FieldDeserializer(DataInput in) {
       this.in = in;
@@ -13,11 +22,35 @@ public final class FieldDeserializer {
    public static <T> T deserialize(DataInput in, Class<T> clazz) throws IOException {
       return new FieldDeserializer(in).deserialize(clazz);
    }
-   // !! A bit long.
    public <T> T deserialize(Class<T> clazz) throws IOException {
-      return clazz.isArray() ? array(clazz) : object(clazz);
+      String clazzName = in.readUTF();
+      if (clazzName.equals("%")) {
+         return backRef(clazz);
+      } else if (clazzName.equals("!")) {
+         matchType(clazz.getName(), in.readUTF());
+         return null;
+      } else {
+         matchType(clazz.getName(), clazzName);
+         T obj = clazz.isArray() ? array(clazz) : object(clazz);
+         labelForBackRef(clazz, obj);
+         return obj;
+      }
    }
-   public <T> T object(Class<T> clazz) throws IOException {
+   private <T> T backRef(Class<T> clazz) throws IOException {
+      long id = in.readLong();
+      Ref ref = backRefs.get(id);
+      if (ref == null) {
+         throw new IOException("Read an non-existent back ref");
+      }
+      if (ref.type != clazz) {
+         throw new IOException("Back ref is of the wrong type");
+      }
+      return (T)ref.obj;
+   }
+   private <T> void labelForBackRef(Class<T> clazz, T obj) throws IOException {
+      backRefs.put(in.readLong(), new Ref(clazz, obj));
+   }
+   private <T> T object(Class<T> clazz) throws IOException {
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -57,27 +90,31 @@ public final class FieldDeserializer {
             throw new IOException("field <"+name+"> in stream not in class");
          }
          Class<?> type = field.getType();
-         String sig = in.readUTF();
-         matchType(type.getName(), sig);
          try {
-            if (type == boolean.class) {
-               field.setBoolean(obj, in.readBoolean());
-            } else if (type == byte.class) {
-               field.setByte(obj, in.readByte());
-            } else if (type == char.class) {
-               field.setChar(obj, in.readChar());
-            } else if (type == short.class) {
-               field.setShort(obj, in.readShort());
-            } else if (type == int.class) {
-               field.setInt(obj, in.readInt());
-            } else if (type == long.class) {
-               field.setLong(obj, in.readLong());
-            } else if (type == float.class) {
-               field.setFloat(obj, in.readFloat());
-            } else if (type == double.class) {
-               field.setDouble(obj, in.readDouble());
-            } else if (type.isArray()) {
-               field.set(obj, array(type));
+            if (type.isPrimitive()) {
+               String sig = in.readUTF();
+               matchType(type.getName(), sig);
+               if (type == boolean.class) {
+                  field.setBoolean(obj, in.readBoolean());
+               } else if (type == byte.class) {
+                  field.setByte(obj, in.readByte());
+               } else if (type == char.class) {
+                  field.setChar(obj, in.readChar());
+               } else if (type == short.class) {
+                  field.setShort(obj, in.readShort());
+               } else if (type == int.class) {
+                  field.setInt(obj, in.readInt());
+               } else if (type == long.class) {
+                  field.setLong(obj, in.readLong());
+               } else if (type == float.class) {
+                  field.setFloat(obj, in.readFloat());
+               } else if (type == double.class) {
+                  field.setDouble(obj, in.readDouble());
+               } else if (type.isArray()) {
+                  field.set(obj, array(type));
+               } else {
+                  throw new Error("Unknown primitive type");
+               }
             } else {
                field.set(obj, deserialize(type));
             }

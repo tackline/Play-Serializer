@@ -70,13 +70,36 @@ public class TestDrive {
       check(new WithField(new Point(1, 2)));
       check(new WithField[] { new WithField(new Point(1, 2)) });
       check(new WithField[] { });
+      
+      Object[] cycle = new Object[1];
+      cycle[0] = cycle;
+      try {
+         check(cycle);
+         fail("Cycle undetected");
+      } catch (IllegalArgumentException exc) {
+         // good
+      }
+      
+      Point[] repeat = { new Point(1, 2), null };
+      repeat[1] = repeat[0];
+      Point[] repeatCopy = copy(repeat);
+      asrt(repeatCopy[0] == repeatCopy[1], "Repeated instance not the same instance");
+      
+      check(new WithField(null));
+      check(new WithArray(null));
    }
    private static void check(Object obj){
+      Object copy = copy(obj);
+      asrt(
+         java.util.Objects.deepEquals(obj, copy),
+         "expected <"+obj+"> was <"+copy+">"
+      );
+   }
+   private static <T> T copy(T obj){
       ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-      Object copy;
       try {
          FieldSerializer.serialize(new DataOutputStream(byteOut), obj);
-         copy = FieldDeserializer.deserialize(
+         return (T)FieldDeserializer.deserialize(
             new DataInputStream(
                new ByteArrayInputStream(
                   byteOut.toByteArray()
@@ -87,8 +110,13 @@ public class TestDrive {
       } catch (IOException exc) {
          throw new Error(exc);
       }
-      if (!java.util.Objects.deepEquals(obj, copy)) {
-         throw new AssertionError("expected <"+obj+"> was <"+copy+">");
+   }
+   private static void asrt(boolean that, String msg) {
+      if (!that) {
+         fail(msg);
       }
+   }
+   private static void fail(String msg) {
+      throw new AssertionError(msg);
    }
 }
