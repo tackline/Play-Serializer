@@ -15,6 +15,9 @@ public final class FieldDeserializer {
    }
    // !! A bit long.
    public <T> T deserialize(Class<T> clazz) throws IOException {
+      return clazz.isArray() ? array(clazz) : object(clazz);
+   }
+   public <T> T object(Class<T> clazz) throws IOException {
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -76,7 +79,7 @@ public final class FieldDeserializer {
             } else if (type.isArray()) {
                field.set(obj, array(type));
             } else {
-               throw new IllegalArgumentException("!! We don't do reference types");
+               field.set(obj, deserialize(type));
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.
@@ -86,65 +89,63 @@ public final class FieldDeserializer {
       }
       return obj;
    }
-   private Object array(Class<?> type) throws IOException {
-      Class<?> componentType = type.getComponentType();
+   private <T> T array(Class<T> type) throws IOException {
       int len = in.readInt();
-      if (componentType == boolean.class) {
+      if (type == boolean[].class) {
          boolean[] fieldObj = new boolean[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readBoolean();
          }
-         return fieldObj;
-      } else if (componentType == byte.class) {
+         return (T)fieldObj;
+      } else if (type == byte[].class) {
          byte[] fieldObj = new byte[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readByte();
          }
-         return fieldObj;
-      } else if (componentType == char.class) {
+         return (T)fieldObj;
+      } else if (type == char[].class) {
          char[] fieldObj = new char[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readChar();
          }
-         return fieldObj;
-      } else if (componentType == short.class) {
+         return (T)fieldObj;
+      } else if (type == short[].class) {
          short[] fieldObj = new short[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readShort();
          }
-         return fieldObj;
-      } else if (componentType == int.class) {
+         return (T)fieldObj;
+      } else if (type == int[].class) {
          int[] fieldObj = new int[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readInt();
          }
-         return fieldObj;
-      } else if (componentType == long.class) {
+         return (T)fieldObj;
+      } else if (type == long[].class) {
          long[] fieldObj = new long[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readLong();
          }
-         return fieldObj;
-      } else if (componentType == float.class) {
+         return (T)fieldObj;
+      } else if (type == float[].class) {
          float[] fieldObj = new float[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readFloat();
          }
-         return fieldObj;
-      } else if (componentType == double.class) {
+         return (T)fieldObj;
+      } else if (type == double[].class) {
          double[] fieldObj = new double[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readDouble();
          }
-         return fieldObj;
-      } else if (componentType.isArray()) {
+         return (T)fieldObj;
+      } else {
+         Class<?> componentType = type.getComponentType();
          Object fieldObj = Array.newInstance(componentType, len);
          for (int i=0; i<len; ++i) {
-            Array.set(fieldObj, i, array(componentType));
+            Array.set(fieldObj, i, deserialize(componentType));
          }
-         return fieldObj;
-      } else {
-         throw null;
+         return (T)fieldObj;
       }
    }
    private static void matchType(String expected, String actual) throws IOException {

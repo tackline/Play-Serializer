@@ -9,11 +9,17 @@ public final class FieldSerializer {
       this.out = out;
    }
    public static void serialize(DataOutput out, Object obj) throws IOException {
-      new FieldSerializer(out).serialize(obj);
+      new FieldSerializer(out).serialize(obj.getClass(), obj);
    }
    // !! A bit long.
-   private void serialize(Object obj) throws IOException {
-      Class<?> clazz = obj.getClass();
+   private void serialize(Class<?> clazz, Object obj) throws IOException {
+      if (clazz.isArray()) {
+         array(clazz, obj);
+      } else {
+         object(clazz, obj);
+      }
+   }
+   private void object(Class<?> clazz, Object obj) throws IOException {
       @SuppressWarnings("unused")
       Constructor<?> ctor = FieldCommon.nullaryConstructor(clazz);
       // !! We don't do class hierarchies.
@@ -41,7 +47,7 @@ public final class FieldSerializer {
             } else if (type.isArray()) {
                array(type, field.get(obj));
             } else {
-               throw new IllegalArgumentException("!! We don't do reference types");
+               serialize(type, field.get(obj));
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.
@@ -52,47 +58,44 @@ public final class FieldSerializer {
       out.writeUTF("."); // End of class indicator.
    }
    private void array(Class<?> type, Object fieldObj) throws IOException {
-      Class<?> componentType = type.getComponentType();
       int len = Array.getLength(fieldObj);
       out.writeInt(len);
-      if (componentType == boolean.class) {
+      if (type == boolean[].class) {
          for (boolean c : (boolean[])fieldObj) {
             out.writeBoolean(c);
          }
-      } else if (componentType == byte.class) {
+      } else if (type == byte[].class) {
          for (byte c : (byte[])fieldObj) {
             out.writeByte(c);
          }
-      } else if (componentType == char.class) {
+      } else if (type == char[].class) {
          for (char c : (char[])fieldObj) {
             out.writeChar(c);
          }
-      } else if (componentType == short.class) {
+      } else if (type == short[].class) {
          for (short c : (short[])fieldObj) {
             out.writeShort(c);
          }
-      } else if (componentType == int.class) {
+      } else if (type == int[].class) {
          for (int c : (int[])fieldObj) {
             out.writeInt(c);
          }
-      } else if (componentType == long.class) {
+      } else if (type == long[].class) {
          for (long c : (long[])fieldObj) {
             out.writeLong(c);
          }
-      } else if (componentType == float.class) {
+      } else if (type == float[].class) {
          for (float c : (float[])fieldObj) {
             out.writeFloat(c);
          }
-      } else if (componentType == double.class) {
+      } else if (type == double[].class) {
          for (double c : (double[])fieldObj) {
             out.writeDouble(c);
          }
-      } else if (componentType.isArray()) {
-         for (Object c : (Object[])fieldObj) {
-            array(componentType, c);
-         }
       } else {
-         throw null;
+         for (Object c : (Object[])fieldObj) {
+            serialize(type.getComponentType(), c);
+         }
       }
    }
 }

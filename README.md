@@ -18,19 +18,23 @@ Non-goals
 
 Current state
 
- - Reads/writes primitive fields of an object.
+ - Reads/writes fields of an object.
+ - Reads/writes arrays elements.
  - Checks types have not changed.
- - !! Checks names.
+ - Checks names.
  - Constructs object through nullary constructor.
+ - Constructs arrays.
 
 Things it does not do
 
  - Check whether the class actually wants to play.
- - Array fields.
- - Referenced objects.
+ - Special case those classes not playing.
+ - Check type parameters.
  - Class hierarchies.
  - Write class info only once.
  - Ensure fields in stream match set of fields in runtime class and are in order with no repeats. (Thanks Sami.)
+ - Handle same object used multiple times.
+ - Hnalde cycles.
 
 Things we don't like in reflection API
 
@@ -40,7 +44,9 @@ Things we don't like in reflection API
  - Similarly forced checked exception IllegalArgumentException even for a nullary.
  - Also InstantiationException ("not limited to" indeed).
  - InvovationTargetExcpetion and rethrowing even if we've checked checked excpeption clauses.
- - Test of type separate from safe usage, IYSWIM.
+ - Test of type separate from safe usage, IYSWIM. Notably arrays.
+ - Caller sensitive methods.
+ - Not being object capability based. 
 
 Anything else.
 
