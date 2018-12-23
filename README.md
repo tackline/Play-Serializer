@@ -25,13 +25,13 @@ Current state
  - Checks for cycles.
  - Reads/writes fields of an object.
  - Reads/writes arrays elements.
- - Checks types have not changed.
- - Checks names.
+ - Checks field names and reorders.
  - Constructs object through nullary constructor.
  - Constructs arrays.
  - Detects same object referred to by references of different static types.
  - Handle null.
  - Handles classes with type parameter/fields with type argument.
+ - Generic arrays.
 
 Things it does not do
 

@@ -82,6 +82,25 @@ public class TestDrive {
          return "Var<"+java.util.Objects.toString(value)+">";
       }
    }
+   public static class VarArray<T> {
+      private T[] value;
+      public VarArray() {
+      }
+      public VarArray(T[] value) {
+         this.value = value;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof VarArray &&
+            java.util.Arrays.deepEquals(((VarArray<?>)other).value, value);
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return "VarArray<"+java.util.Objects.toString(value)+">";
+      }
+   }
    public static class WithVar {
       private Var<Point> valuePoint;
       public WithVar() {
@@ -99,6 +118,44 @@ public class TestDrive {
       }
       @Override public String toString() {
          return "WithVar<"+java.util.Objects.toString(valuePoint)+">";
+      }
+   }
+   public static class WithVarVar {
+      private Var<Var<Point>> valuePoint;
+      public WithVarVar() {
+      }
+      public WithVarVar(Var<Var<Point>> valuePoint) {
+         this.valuePoint = valuePoint;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof WithVarVar &&
+            java.util.Objects.deepEquals(((WithVarVar)other).valuePoint, valuePoint);
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return "WithVarVar<"+java.util.Objects.toString(valuePoint)+">";
+      }
+   }
+   public static class WithVarArray {
+      private VarArray<Point> valuePoint;
+      public WithVarArray() {
+      }
+      public WithVarArray(VarArray<Point> valuePoint) {
+         this.valuePoint = valuePoint;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof WithVarArray &&
+            java.util.Objects.deepEquals(((WithVarArray)other).valuePoint, valuePoint);
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return "WithVarArray<"+java.util.Objects.toString(valuePoint)+">";
       }
    }
    public static void main(String[] args) {
@@ -130,7 +187,10 @@ public class TestDrive {
       check(WithArray.class, new WithArray(new Point[][] { null }));
 
       // Generics
-      check(WithVar.class, new WithVar(new Var<Point>(new Point(12, 13))));
+      check(WithVar.class, new WithVar(new Var<>(new Point(12, 13))));
+      check(WithVarVar.class, new WithVarVar(new Var<>(new Var<>(new Point(14, 15)))));
+      check(WithVarArray.class, new WithVarArray(new VarArray<>(new Point[] { new Point(15, 16) })));
+      
    }
    private static <T> void check(Class<T> clazz, T obj){
       Object copy = copy(clazz, obj);
