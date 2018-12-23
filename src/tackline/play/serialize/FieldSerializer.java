@@ -20,11 +20,26 @@ public final class FieldSerializer {
    private FieldSerializer(DataOutput out) {
       this.out = out;
    }
-   public static void serialize(DataOutput out, Object obj) throws IOException {
+   public static <T> void serialize(DataOutput out, Class<T> clazz, T obj) throws IOException {
       new FieldSerializer(out).serialize(obj.getClass(), obj);
    }
-   private void serialize(Class<?> clazz, Object obj) throws IOException {
-      
+   private void serialize(Type type, Object obj) throws IOException {
+      if (type instanceof Class<?>) {
+         refType((Class<?>)type, new Type[0], obj);
+      } else if (type instanceof ParameterizedType) {
+         ParameterizedType parameterizedType = (ParameterizedType)type;
+         Type rawType = parameterizedType.getRawType();
+         if (rawType instanceof Class<?>) {
+            Type[] typeArgs = parameterizedType.getActualTypeArguments();
+            refType((Class<?>)rawType, typeArgs, obj);
+         } else {
+            throw exc("Don't know what that raw type is supposed to be");
+         }
+      } else {
+         throw exc("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
+      }
+   }
+   private void refType(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
       Ref backRef = backRefs.get(obj);
       if (backRef != null) {
          out.writeUTF("%");
@@ -34,21 +49,21 @@ public final class FieldSerializer {
          out.writeUTF(clazz.getName());
       } else {
          if (!seen.add(obj)) {
-            throw new IllegalArgumentException("Cycle detected");
+            throw exc("Cycle detected");
          }
          
          out.writeUTF(clazz.getName());
          if (clazz.isArray()) {
             array(clazz, obj);
          } else {
-            object(clazz, obj);
+            object(clazz, typeArgs, obj);
          }
          labelForBackRef(clazz, obj);
       }
    }
    private void backRef(Ref backRef, Class<?> clazz, Object obj) throws IOException {
       if (backRef.type != clazz) {
-         throw new IllegalArgumentException("static type of object changed");
+         throw exc("static type of object changed");
       }
       out.writeLong(backRef.id);
    }
@@ -57,16 +72,20 @@ public final class FieldSerializer {
       backRefs.put(obj, new Ref(clazz, id));
       out.writeLong(id);
    }
-   private void object(Class<?> clazz, Object obj) throws IOException {
+   private void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
+      TypeVariable<?>[] typeParams = clazz.getTypeParameters();
+      if (typeParams.length != typeArgs.length) {
+         throw exc("Class with type params not matching type args");
+      }
       @SuppressWarnings("unused")
       Constructor<?> ctor = FieldCommon.nullaryConstructor(clazz);
       // !! We don't do class hierarchies.
       for (Field field : FieldCommon.serialFields(clazz)) {
          out.writeUTF(field.getName());
-         Class<?> type = field.getType();
+         Type type = field.getGenericType();
          try {
-            if (type.isPrimitive()) {
-               out.writeUTF(type.getName());
+            if (type instanceof Class<?> && ((Class<?>)type).isPrimitive()) {
+               out.writeUTF(((Class<?>)type).getName());
                if (type == boolean.class) {
                   out.writeBoolean(field.getBoolean(obj));
                } else if (type == byte.class) {
@@ -89,7 +108,19 @@ public final class FieldSerializer {
                   throw new Error("Unknown primitive type");
                }
             } else {
-               serialize(type, field.get(obj));
+               if (type instanceof TypeVariable<?>) {
+                  typeParam: {
+                     for (int i=0; i<typeParams.length; ++i) {
+                        if (type.equals(typeParams[i])) {
+                           serialize(typeArgs[i], field.get(obj));
+                           break typeParam;
+                        }
+                     }
+                     throw exc("Field's type variable not found");
+                  }
+               } else {
+                  serialize(type, field.get(obj));
+               }
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.
@@ -139,5 +170,9 @@ public final class FieldSerializer {
             serialize(type.getComponentType(), c);
          }
       }
+   }
+   // Actually throws the exception instead of returning it, just in case we forget.
+   public static IllegalArgumentException exc(String msg) {
+      throw new IllegalArgumentException(msg);
    }
 }

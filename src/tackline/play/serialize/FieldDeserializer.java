@@ -9,7 +9,7 @@ public final class FieldDeserializer {
    private static class Ref {
       private final Class<?> type;
       private final Object obj;
-      public <T> Ref(Class<T> type, T obj) {
+      public /*<T>*/ Ref(Class<?> type, Object obj) {
          this.type = type;
          this.obj = obj;
       }
@@ -20,23 +20,40 @@ public final class FieldDeserializer {
       this.in = in;
    }
    public static <T> T deserialize(DataInput in, Class<T> clazz) throws IOException {
-      return new FieldDeserializer(in).deserialize(clazz);
+      return clazz.cast(new FieldDeserializer(in).deserialize(clazz));
    }
-   public <T> T deserialize(Class<T> clazz) throws IOException {
+   public Object deserialize(Type type) throws IOException {
+      if (type instanceof Class<?>) {
+         return refType((Class<?>)type, new Type[0]);
+      } else if (type instanceof ParameterizedType) {
+         ParameterizedType parameterizedType = (ParameterizedType)type;
+         Type rawType = parameterizedType.getRawType();
+         if (rawType instanceof Class<?>) {
+            Type[] typeArgs = parameterizedType.getActualTypeArguments();
+            return refType((Class<?>)rawType, typeArgs);
+         } else {
+            throw exc("Don't know what that raw type is supposed to be");
+         }
+      } else {
+         throw exc("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
+      }
+   }
+   private Object refType(Class<?> clazz, Type[] typeArgs) throws IOException {
       String clazzName = in.readUTF();
       if (clazzName.equals("%")) {
+         // !! Doesn't check type.
          return backRef(clazz);
       } else if (clazzName.equals("!")) {
          matchType(clazz.getName(), in.readUTF());
          return null;
       } else {
          matchType(clazz.getName(), clazzName);
-         T obj = clazz.isArray() ? array(clazz) : object(clazz);
+         Object obj = clazz.isArray() ? array(clazz) : object(clazz, typeArgs);
          labelForBackRef(clazz, obj);
          return obj;
       }
    }
-   private <T> T backRef(Class<T> clazz) throws IOException {
+   private Object backRef(Class<?> clazz) throws IOException {
       long id = in.readLong();
       Ref ref = backRefs.get(id);
       if (ref == null) {
@@ -45,12 +62,16 @@ public final class FieldDeserializer {
       if (ref.type != clazz) {
          throw new IOException("Back ref is of the wrong type");
       }
-      return (T)ref.obj;
+      return ref.obj;
    }
-   private <T> void labelForBackRef(Class<T> clazz, T obj) throws IOException {
+   private void labelForBackRef(Class<?> clazz, Object obj) throws IOException {
       backRefs.put(in.readLong(), new Ref(clazz, obj));
    }
-   private <T> T object(Class<T> clazz) throws IOException {
+   private <T> T object(Class<T> clazz, Type[] typeArgs) throws IOException {
+      TypeVariable<?>[] typeParams = clazz.getTypeParameters();
+      if (typeParams.length != typeArgs.length) {
+         throw exc("Class with type params not matching type args");
+      }
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -89,11 +110,12 @@ public final class FieldDeserializer {
             // Java Serialization just ignores this. (Also the XML way.)
             throw new IOException("field <"+name+"> in stream not in class");
          }
-         Class<?> type = field.getType();
+         //Class<?> type = field.getType();
+         Type type = field.getGenericType();
          try {
-            if (type.isPrimitive()) {
+            if (type instanceof Class<?> && ((Class<?>)type).isPrimitive()) {
                String sig = in.readUTF();
-               matchType(type.getName(), sig);
+               matchType(((Class<?>)type).getName(), sig);
                if (type == boolean.class) {
                   field.setBoolean(obj, in.readBoolean());
                } else if (type == byte.class) {
@@ -110,13 +132,25 @@ public final class FieldDeserializer {
                   field.setFloat(obj, in.readFloat());
                } else if (type == double.class) {
                   field.setDouble(obj, in.readDouble());
-               } else if (type.isArray()) {
-                  field.set(obj, array(type));
+               } else if (((Class<?>)type).isArray()) {
+                  field.set(obj, array(((Class<?>)type)));
                } else {
                   throw new Error("Unknown primitive type");
                }
             } else {
-               field.set(obj, deserialize(type));
+               if (type instanceof TypeVariable<?>) {
+                  typeParam: {
+                     for (int i=0; i<typeParams.length; ++i) {
+                        if (type.equals(typeParams[i])) {
+                           field.set(obj, deserialize(typeArgs[i]));
+                           break typeParam;
+                        }
+                     }
+                     throw exc("Field's type variable not found");
+                  }
+               } else {
+                  field.set(obj, deserialize(type));
+               }
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.
@@ -189,5 +223,9 @@ public final class FieldDeserializer {
       if (!expected.equals(actual)) {
          throw new IOException("Type mismatch");
       }
+   }
+   // Actually throws the exception instead of returning it, just in case we forget.
+   public static IOException exc(String msg) throws IOException {
+      throw new IOException(msg);
    }
 }

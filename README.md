@@ -1,5 +1,7 @@
 DO NOT USE THIS. It's Christmas time. I haven't written a serializer. There's loads of bad ones about. Seems easy.
 
+NB: This code as absolutely not safe. You knew that. It reads and writes private fields with no opt-in check.
+
 Goals
 
  - See how easy it is to write a serializer.
@@ -29,14 +31,15 @@ Current state
  - Constructs arrays.
  - Detects same object referred to by references of different static types.
  - Handle null.
+ - Handles classes with type parameter/fields with type argument.
 
 Things it does not do
 
  - Check whether the class actually wants to play.
  - Special case those classes not playing.
  - Check type parameters.
- - Class hierarchies.
- - Write class info only once.
+ - Class hierarchies - I'm all about the base^Wstatic type..
+ - DRY class info.
  - Ensure fields in stream match set of fields in runtime class and are in order with no repeats. (Thanks Sami.) 
  - Handle cycles.
 
@@ -51,11 +54,13 @@ Things we don't like in reflection API
  - Test of type separate from safe usage, IYSWIM. Notably arrays.
  - Caller sensitive methods.
  - Not being object capability based. 
+ - Type - Casting to Class in order to call isPrimitive - one or the other!
 
 Anything else.
 
  - I wrote `name == "."`. Idiot.
  - github is a miserable piece of junk.
+ - Serialization is really for value type, which should be immutable, so shouldn't be going around with non-final fields and no-arg constructors.
  - Writting the serializer/deserializer as an object and recrusing within same instance is cool, but don't expose that to the client or more particularly to the serialized/deserialized objects.
  - Primitives - bleurgh.
  - Given that there are primitives, more utility methods? Or not.
