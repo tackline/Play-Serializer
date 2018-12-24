@@ -20,9 +20,9 @@ public final class FieldDeserializer {
       this.in = in;
    }
    public static <T> T deserialize(DataInput in, Class<T> clazz) throws IOException {
-      return clazz.cast(new FieldDeserializer(in).deserialize(clazz, Collections.emptyMap()));
+      return clazz.cast(new FieldDeserializer(in).deserialize(clazz));
    }
-   public Object deserialize(Type type, Map<TypeVariable<?>,Type> typeMap) throws IOException {
+   public Object deserialize(Type type) throws IOException {
       String clazzName = in.readUTF(); //!!name
       if (clazzName.equals("%")) {
          // !! Doesn't check type.
@@ -30,33 +30,33 @@ public final class FieldDeserializer {
       } else if (clazzName.equals("!")) {
          return null;
       } else if (clazzName.equals("=")) {
-         Object obj = refType(type, typeMap);
+         Object obj = refType(type);
          labelForBackRef(type, obj);
          return obj;
       } else {
          throw exc("Unkown serialization type");
       }
    }
-   private Object refType(Type type, Map<TypeVariable<?>,Type> typeMap) throws IOException {
+   private Object refType(Type type) throws IOException {
       if (type instanceof Class<?>) {
-         return classType((Class<?>)type, new Type[0], typeMap);
+         return classType((Class<?>)type, new Type[0]);
       } else if (type instanceof ParameterizedType) {
          ParameterizedType parameterizedType = (ParameterizedType)type;
          Type rawType = parameterizedType.getRawType();
          if (rawType instanceof Class<?>) {
             Type[] typeArgs = parameterizedType.getActualTypeArguments();
-            return classType((Class<?>)rawType, typeArgs, typeMap);
+            return classType((Class<?>)rawType, typeArgs);
          } else {
             throw exc("Don't know what that raw type is supposed to be");
          }
       } else if (type instanceof GenericArrayType) {
-         return array(type, typeMap);
+         return array(type);
       } else {
          throw exc("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
       }
    }
-   private Object classType(Class<?> clazz, Type[] typeArgs, Map<TypeVariable<?>,Type> typeMap) throws IOException {
-      Object obj = clazz.isArray() ? array(clazz, typeMap) : object(clazz, typeArgs);
+   private Object classType(Class<?> clazz, Type[] typeArgs) throws IOException {
+      Object obj = clazz.isArray() ? array(clazz) : object(clazz, typeArgs);
       return obj;
    }
    private Object backRef(Type type) throws IOException {
@@ -74,11 +74,11 @@ public final class FieldDeserializer {
       backRefs.put(in.readLong(), new Ref(type, obj));
    }
    private <T> T object(Class<T> clazz, Type[] typeArgs) throws IOException {
-      TypeVariable<?>[] typeParams = clazz.getTypeParameters();
+      TypeVariable<? extends Class<?>>[] typeParams = clazz.getTypeParameters();
       if (typeParams.length != typeArgs.length) {
          throw exc("Class with type params not matching type args");
       }
-      Map<TypeVariable<?>,Type> typeMap = FieldCommon.zipMap(typeParams, typeArgs);
+      Map<TypeVariable<? extends Class<?>>,Type> typeMap = FieldCommon.zipMap(typeParams, typeArgs);
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -141,18 +141,7 @@ public final class FieldDeserializer {
                   throw new Error("Unknown primitive type");
                }
             } else {
-               final Object fieldObj;
-               if (type instanceof TypeVariable<?>) {
-                  Type actualType = typeMap.get(type);
-                  if (actualType == null) {
-                     throw exc("Field's type variable not found");
-                  } else {
-                     fieldObj = deserialize(actualType, typeMap);
-                  }
-               } else {
-                  fieldObj = deserialize(type, typeMap);
-               }
-               field.set(obj, fieldObj);
+               field.set(obj, deserialize(FieldCommon.substituteTypeParams(typeMap, type)));
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.
@@ -162,7 +151,7 @@ public final class FieldDeserializer {
       }
       return obj;
    }
-   private Object array(Type type, Map<TypeVariable<?>,Type> typeMap) throws IOException {
+   private Object array(Type type) throws IOException {
       int len = in.readInt();
       if (type == boolean[].class) {
          boolean[] fieldObj = new boolean[len];
@@ -220,12 +209,6 @@ public final class FieldDeserializer {
             componentType = rawComponentType;
          } else if (type instanceof GenericArrayType) {
             componentType = ((GenericArrayType)type).getGenericComponentType();
-            if (componentType instanceof TypeVariable<?>) {
-               componentType = typeMap.get(componentType);
-               if (componentType == null) {
-                  throw exc("Field's type variable not found");
-               }
-            }
             if (componentType instanceof Class<?>) { // unlikely
                rawComponentType = (Class<?>)componentType;
             } else {
@@ -236,7 +219,7 @@ public final class FieldDeserializer {
          }
          Object fieldObj = Array.newInstance(rawComponentType, len);
          for (int i=0; i<len; ++i) {
-            Array.set(fieldObj, i, deserialize(componentType, typeMap));
+            Array.set(fieldObj, i, deserialize(componentType));
          }
          return fieldObj;
       }

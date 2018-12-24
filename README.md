@@ -32,12 +32,14 @@ Current state
  - Handle null.
  - Handles classes with type parameter/fields with type argument.
  - Generic arrays.
+ - Classes parameterised with generic arrays, or something.
+ - Primitive type argument substitution hack - the java.lang.reflect is not sufficiently specified to allow this to behave correctly(!).
 
 Things it does not do
 
  - Check whether the class actually wants to play.
  - Special case those classes not playing.
- - Check type parameters.
+ - Check type bounds.
  - Class hierarchies - I'm all about the base^Wstatic type..
  - DRY class info.
  - Ensure fields in stream match set of fields in runtime class and are in order with no repeats. (Thanks Sami.) 
@@ -55,6 +57,7 @@ Things we don't like in reflection API
  - Caller sensitive methods.
  - Not being object capability based. 
  - Type - Casting to Class in order to call isPrimitive - one or the other!
+ - Mostly undefined equals/hashCode of Types together with the inability of deriving types.
 
 Anything else.
 
