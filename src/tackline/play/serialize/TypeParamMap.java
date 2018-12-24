@@ -7,17 +7,21 @@ import java.lang.reflect.TypeVariable;
 import java.util.Map;
 
 class TypeParamMap {
-   private final Map<TypeVariable<? extends Class<?>>,Type> typeMap;
+   private final Map<String,Type> typeMap;
    TypeParamMap(TypeVariable<? extends Class<?>>[] typeParams, Type[] typeArgs) {
-      if (typeParams.length != typeArgs.length) {
+      int len = typeParams.length;
+      if (len != typeArgs.length) {
          throw new IllegalArgumentException("Type params not matching type args");
       }
-      // !! Of course there's no real semantics defined for equals on TypeVariable
-      this.typeMap = FieldCommon.zipMap(typeParams, typeArgs);
+      String[] names = new String[len];
+      for (int i=0; i<len; ++i) {
+         names[i] = typeParams[i].getName();
+      }
+      this.typeMap = FieldCommon.zipMap(names, typeArgs);
    }
    Type substitute(Type type) {
       if (type instanceof TypeVariable<?>) {
-         Type actualType = typeMap.get(type);
+         Type actualType = typeMap.get(((TypeVariable<?>)type).getName());
          if (actualType instanceof TypeVariable<?>) { throw null; }
          if (actualType == null) {
             throw new IllegalArgumentException("Type variable not found");
