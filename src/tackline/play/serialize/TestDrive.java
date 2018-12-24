@@ -139,6 +139,25 @@ public class TestDrive {
          return "WithVar<"+java.util.Objects.toString(valuePoint)+">";
       }
    }
+   public static class WithVarVarT<T> {
+      private Var<Var<T>> value;
+      public WithVarVarT() {
+      }
+      public WithVarVarT(Var<Var<T>> value) {
+         this.value = value;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof WithVarVarT &&
+            java.util.Objects.deepEquals(((WithVarVarT)other).value, value);
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return "WithVarVarT<"+java.util.Objects.toString(value)+">";
+      }
+   }
    public static class WithVarVar {
       private Var<Var<Point>> valuePoint;
       public WithVarVar() {
@@ -196,6 +215,25 @@ public class TestDrive {
          return "WithVarVarArray<"+java.util.Objects.toString(valuePoint)+">";
       }
    }
+   public static class WithWithVarVarT {
+      private WithVarVarT<Point> valuePoint;
+      public WithWithVarVarT() {
+      }
+      public WithWithVarVarT(WithVarVarT<Point> valuePoint) {
+         this.valuePoint = valuePoint;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof WithWithVarVarT &&
+            java.util.Objects.deepEquals(((WithWithVarVarT)other).valuePoint, valuePoint);
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return "WithWithVarVarT<"+java.util.Objects.toString(valuePoint)+">";
+      }
+   }
    public static void main(String[] args) {
       check(Point.class, new Point(1, 2));
       check(WithPrimitiveArray.class, new WithPrimitiveArray(new int[][] {{ 1, 2 }, { 3, 4 }}));
@@ -229,7 +267,7 @@ public class TestDrive {
       check(WithVarVar.class, new WithVarVar(new Var<>(new Var<>(new Point(14, 15)))));
       check(WithVarArray.class, new WithVarArray(new VarArray<>(new Point[] { new Point(15, 16) })));
       check(WithVarVarArray.class, new WithVarVarArray(new VarVarArray<>(new Var<>(new Point[] { new Point(15, 16) }))));
-      // Next check: Var<Var<T>>
+      check(WithWithVarVarT.class, new WithWithVarVarT(new WithVarVarT<>(new Var<>(new Var<> (new Point(15, 16))))));
    }
    private static <T> void check(Class<T> clazz, T obj){
       Object copy = copy(clazz, obj);

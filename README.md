@@ -17,7 +17,7 @@ Non-goals
  - Nice errors.
  - Efficiency.
  - Worry too much about the likes of long functions.
- - Do any dodgy `Class.forName`ing from stream data - static typing, cafebabe!
+ - Do any dodgy `Class.forName`ing from stream data - static typing all the way, cafebabe!
 
 Current state
 
@@ -34,6 +34,7 @@ Current state
  - Generic arrays.
  - Classes parameterised with generic arrays, or something.
  - Primitive type argument substitution hack - the java.lang.reflect is not sufficiently specified to allow this to behave correctly(!).
+ - Looks up type variables using name rather than assuming undocumented equals/hashCode works sensibly.
 
 Things it does not do
 
