@@ -76,12 +76,8 @@ public final class FieldSerializer {
       out.writeLong(id);
    }
    private void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
-      TypeVariable<? extends Class<?>>[] typeParams = clazz.getTypeParameters();
-      if (typeParams.length != typeArgs.length) {
-         throw exc("Class with type params not matching type args");
-      }
       // !! Of course there's no real semantics defined for equals on TypeVariable
-      Map<TypeVariable<? extends Class<?>>,Type> typeMap = FieldCommon.zipMap(typeParams, typeArgs);
+      TypeParamMap typeMap = new TypeParamMap(clazz.getTypeParameters(), typeArgs);
       @SuppressWarnings("unused")
       Constructor<?> ctor = FieldCommon.nullaryConstructor(clazz);
       // !! We don't do class hierarchies.
@@ -111,7 +107,7 @@ public final class FieldSerializer {
                }
             } else {
                Object fieldObj = field.get(obj);
-               serialize(FieldCommon.substituteTypeParams(typeMap, type), fieldObj);
+               serialize(typeMap.substitute(type), fieldObj);
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.

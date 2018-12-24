@@ -74,11 +74,7 @@ public final class FieldDeserializer {
       backRefs.put(in.readLong(), new Ref(type, obj));
    }
    private <T> T object(Class<T> clazz, Type[] typeArgs) throws IOException {
-      TypeVariable<? extends Class<?>>[] typeParams = clazz.getTypeParameters();
-      if (typeParams.length != typeArgs.length) {
-         throw exc("Class with type params not matching type args");
-      }
-      Map<TypeVariable<? extends Class<?>>,Type> typeMap = FieldCommon.zipMap(typeParams, typeArgs);
+      TypeParamMap typeMap = new TypeParamMap(clazz.getTypeParameters(), typeArgs);
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -117,7 +113,6 @@ public final class FieldDeserializer {
             // Java Serialization just ignores this. (Also the XML way.)
             throw new IOException("field <"+name+"> in stream not in class");
          }
-         //Class<?> type = field.getType();
          Type type = field.getGenericType();
          try {
             if (type instanceof Class<?> && ((Class<?>)type).isPrimitive()) {
@@ -141,7 +136,7 @@ public final class FieldDeserializer {
                   throw new Error("Unknown primitive type");
                }
             } else {
-               field.set(obj, deserialize(FieldCommon.substituteTypeParams(typeMap, type)));
+               field.set(obj, deserialize(typeMap.substitute(type)));
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.
