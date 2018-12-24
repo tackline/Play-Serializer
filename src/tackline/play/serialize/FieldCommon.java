@@ -62,4 +62,15 @@ class FieldCommon {
       }
       return Collections.unmodifiableMap(map);
    }
+   static Type componentType(Type type) {
+      Type componentType;
+      if (type instanceof Class<?>) {
+         componentType = ((Class<?>)type).getComponentType();
+      } else if (type instanceof GenericArrayType) {
+         componentType = ((GenericArrayType)type).getGenericComponentType();
+      } else {
+         throw new IllegalArgumentException("Unknown array type type");
+      }
+      return componentType;
+   }
 }

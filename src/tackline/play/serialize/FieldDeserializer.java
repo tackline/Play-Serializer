@@ -65,6 +65,7 @@ public final class FieldDeserializer {
       if (ref == null) {
          throw new IOException("Read an non-existent back ref");
       }
+      // !! This isn't going to work for type substitution, is it?
       if (ref.type != type) {
          throw new IOException("Back ref is of the wrong type");
       }
@@ -74,7 +75,7 @@ public final class FieldDeserializer {
       backRefs.put(in.readLong(), new Ref(type, obj));
    }
    private <T> T object(Class<T> clazz, Type[] typeArgs) throws IOException {
-      TypeParamMap typeMap = new TypeParamMap(clazz.getTypeParameters(), typeArgs);
+      TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -197,20 +198,12 @@ public final class FieldDeserializer {
          }
          return fieldObj;
       } else {
+         Type componentType = FieldCommon.componentType(type);
          final Class<?> rawComponentType;
-         Type componentType;
-         if (type instanceof Class<?>) {
-            rawComponentType = ((Class<?>)type).getComponentType();
-            componentType = rawComponentType;
-         } else if (type instanceof GenericArrayType) {
-            componentType = ((GenericArrayType)type).getGenericComponentType();
-            if (componentType instanceof Class<?>) { // unlikely
-               rawComponentType = (Class<?>)componentType;
-            } else {
-               throw null;
-            }
+         if (componentType instanceof Class<?>) {
+            rawComponentType = (Class<?>)componentType;
          } else {
-            throw exc("Unknown array type type");
+            throw exc("Array component type not a class");
          }
          Object fieldObj = Array.newInstance(rawComponentType, len);
          for (int i=0; i<len; ++i) {

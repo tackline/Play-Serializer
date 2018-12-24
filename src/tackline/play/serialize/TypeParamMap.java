@@ -8,7 +8,8 @@ import java.util.Map;
 
 class TypeParamMap {
    private final Map<String,Type> typeMap;
-   TypeParamMap(TypeVariable<? extends Class<?>>[] typeParams, Type[] typeArgs) {
+   TypeParamMap(Class<?> clazz, Type[] typeArgs) {
+      TypeVariable<? extends Class<?>>[] typeParams = clazz.getTypeParameters();
       int len = typeParams.length;
       if (len != typeArgs.length) {
          throw new IllegalArgumentException("Type params not matching type args");
