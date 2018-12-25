@@ -38,26 +38,17 @@ public final class FieldDeserializer {
       }
    }
    private Object refType(Type type) throws IOException {
-      if (type instanceof Class<?>) {
-         return classType((Class<?>)type, new Type[0]);
-      } else if (type instanceof ParameterizedType) {
-         ParameterizedType parameterizedType = (ParameterizedType)type;
-         Type rawType = parameterizedType.getRawType();
-         if (rawType instanceof Class<?>) {
-            Type[] typeArgs = parameterizedType.getActualTypeArguments();
-            return classType((Class<?>)rawType, typeArgs);
-         } else {
-            throw exc("Don't know what that raw type is supposed to be");
+      return FieldCommon.extractParameters(type, new ParameterExtract<Object,IOException>() {
+         public Object class_(Class<?> rawType, Type[] typeArgs) throws IOException {
+            return object(rawType, typeArgs);
          }
-      } else if (type instanceof GenericArrayType) {
-         return array(type);
-      } else {
-         throw exc("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
-      }
-   }
-   private Object classType(Class<?> clazz, Type[] typeArgs) throws IOException {
-      Object obj = clazz.isArray() ? array(clazz) : object(clazz, typeArgs);
-      return obj;
+         public Object array(Type componentType) throws IOException {
+            return FieldDeserializer.this.array(componentType);
+         }
+         public IOException error(String msg) throws IOException {
+            throw exc(msg);
+         }
+      });
    }
    private Object backRef(Type type) throws IOException {
       long id = in.readLong();
@@ -147,63 +138,69 @@ public final class FieldDeserializer {
       }
       return obj;
    }
-   private Object array(Type type) throws IOException {
+   private Object array(Type componentType) throws IOException {
       int len = in.readInt();
-      if (type == boolean[].class) {
+      if (componentType == boolean.class) {
          boolean[] fieldObj = new boolean[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readBoolean();
          }
          return fieldObj;
-      } else if (type == byte[].class) {
+      } else if (componentType == byte.class) {
          byte[] fieldObj = new byte[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readByte();
          }
          return fieldObj;
-      } else if (type == char[].class) {
+      } else if (componentType == char.class) {
          char[] fieldObj = new char[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readChar();
          }
          return fieldObj;
-      } else if (type == short[].class) {
+      } else if (componentType == short.class) {
          short[] fieldObj = new short[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readShort();
          }
          return fieldObj;
-      } else if (type == int[].class) {
+      } else if (componentType == int.class) {
          int[] fieldObj = new int[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readInt();
          }
          return fieldObj;
-      } else if (type == long[].class) {
+      } else if (componentType == long.class) {
          long[] fieldObj = new long[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readLong();
          }
          return fieldObj;
-      } else if (type == float[].class) {
+      } else if (componentType == float.class) {
          float[] fieldObj = new float[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readFloat();
          }
          return fieldObj;
-      } else if (type == double[].class) {
+      } else if (componentType == double.class) {
          double[] fieldObj = new double[len];
          for (int i=0; i<len; ++i) {
             fieldObj[i] = in.readDouble();
          }
          return fieldObj;
       } else {
-         Type componentType = FieldCommon.componentType(type);
          final Class<?> rawComponentType;
          if (componentType instanceof Class<?>) {
             rawComponentType = (Class<?>)componentType;
+         } else if (componentType instanceof ParameterizedType) {
+            Type badlyTypedRawComponentType = ((ParameterizedType)componentType).getRawType();
+            if (badlyTypedRawComponentType instanceof Class<?>) {
+                rawComponentType = (Class<?>)badlyTypedRawComponentType;
+            } else {
+               throw exc("WTF: ParameterizedType.getRawType not a Class<?>");
+            }
          } else {
-            throw exc("Array component type not a class");
+            throw exc("Array component type <"+componentType.getClass()+"> not a Class<?>");
          }
          Object fieldObj = Array.newInstance(rawComponentType, len);
          for (int i=0; i<len; ++i) {

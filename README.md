@@ -35,6 +35,7 @@ Current state
  - Classes parameterised with generic arrays, or something.
  - Primitive type argument substitution hack - the java.lang.reflect is not sufficiently specified to allow this to behave correctly(!).
  - Looks up type variables using name rather than assuming undocumented equals/hashCode works sensibly.
+ - Arrays of parameterized types.
 
 Things it does not do
 
@@ -59,6 +60,7 @@ Things we don't like in reflection API
  - Not being object capability based. 
  - Type - Casting to Class in order to call isPrimitive - one or the other!
  - Mostly undefined equals/hashCode of Types together with the inability of deriving types.
+ - Why does ParameterizedType.getRawType not return Class<?>? (Possibly others.)
 
 Anything else.
 
@@ -71,3 +73,5 @@ Anything else.
  - I'm really thinking about serializing through public interfaces here, without downcasting nastiness.
  - Fun thing: If you try to read junk, that's an IOException; try to write junk and that's an IllegalArgumentException.
  - I used a generic constructor! (though not for anything particularly useuful)
+ - Generics for handling return and exception types are terrible.
+ - Keywords considered a bad idea (context sensitive keywords moreso).

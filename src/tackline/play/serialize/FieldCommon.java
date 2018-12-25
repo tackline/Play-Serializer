@@ -1,5 +1,6 @@
 package tackline.play.serialize;
 
+import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -47,6 +48,34 @@ class FieldCommon {
          }
       }
       return serialFields;
+   }
+   
+   static <R, EXC extends Throwable> R extractParameters(
+      Type type, ParameterExtract<R, EXC> extracted
+   ) throws EXC {
+      if (type instanceof Class<?>) {
+         Class<?> clazz = (Class<?>)type;
+         return clazz.isArray() ?
+            extracted.array(FieldCommon.componentType(clazz)) :
+            extracted.class_(clazz, new Type[0]);
+      } else if (type instanceof ParameterizedType) {
+         ParameterizedType parameterizedType = (ParameterizedType)type;
+         Type rawType = parameterizedType.getRawType();
+         if (rawType instanceof Class<?>) {
+            Type[] typeArgs = parameterizedType.getActualTypeArguments();
+            Class<?> rawClazz = (Class<?>)rawType;
+            // We lose typeArgs if this is an array???
+            return rawClazz.isArray() ?
+               extracted.array(FieldCommon.componentType(rawClazz)) :
+               extracted.class_(rawClazz, typeArgs);
+         } else {
+            throw extracted.error("Don't know what that raw type is supposed to be");
+         }
+      } else if (type instanceof GenericArrayType) {
+         return extracted.array(FieldCommon.componentType(type));
+      } else {
+         throw extracted.error("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
+      }
    }
    
    static <K,V> Map<K,V> zipMap(K[] keys, V[] values) {

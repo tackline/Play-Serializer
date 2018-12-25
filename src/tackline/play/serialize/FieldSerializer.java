@@ -40,29 +40,19 @@ public final class FieldSerializer {
       }
    }
    private void refType(Type type, Object obj) throws IOException {
-      if (type instanceof Class<?>) {
-         classType((Class<?>)type, new Type[0], obj);
-      } else if (type instanceof ParameterizedType) {
-         ParameterizedType parameterizedType = (ParameterizedType)type;
-         Type rawType = parameterizedType.getRawType();
-         if (rawType instanceof Class<?>) {
-            Type[] typeArgs = parameterizedType.getActualTypeArguments();
-            classType((Class<?>)rawType, typeArgs, obj);
-         } else {
-            throw exc("Don't know what that raw type is supposed to be");
+      FieldCommon.extractParameters(type, new ParameterExtract<Void,IOException>() {
+         public Void class_(Class<?> rawType, Type[] typeArgs) throws IOException {
+            object(rawType, typeArgs, obj);
+            return null;
          }
-      } else if (type instanceof GenericArrayType) { // !! T in List<T>[]?
-         array(type, obj);
-      } else {
-         throw exc("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
-      }
-   }
-   private void classType(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
-      if (clazz.isArray()) {
-         array(clazz, obj);
-      } else {
-         object(clazz, typeArgs, obj);
-      }
+         public Void array(Type componentType) throws IOException {
+            FieldSerializer.this.array(componentType, obj);
+            return null;
+         }
+         public IOException error(String msg) throws IOException {
+            throw exc(msg);
+         }
+      });
    }
    private void backRef(Ref backRef, Type type, Object obj) throws IOException {
       if (!backRef.type.equals(type)) {
@@ -117,43 +107,43 @@ public final class FieldSerializer {
       }
       out.writeUTF("."); // End of class indicator.
    }
-   private void array(Type type, Object fieldObj) throws IOException {
+   private void array(Type componentType, Object fieldObj) throws IOException {
       int len = Array.getLength(fieldObj);
       out.writeInt(len);
-      if (type == boolean[].class) {
+      if (componentType == boolean.class) {
          for (boolean c : (boolean[])fieldObj) {
             out.writeBoolean(c);
          }
-      } else if (type == byte[].class) {
+      } else if (componentType == byte.class) {
          for (byte c : (byte[])fieldObj) {
             out.writeByte(c);
          }
-      } else if (type == char[].class) {
+      } else if (componentType == char.class) {
          for (char c : (char[])fieldObj) {
             out.writeChar(c);
          }
-      } else if (type == short[].class) {
+      } else if (componentType == short.class) {
          for (short c : (short[])fieldObj) {
             out.writeShort(c);
          }
-      } else if (type == int[].class) {
+      } else if (componentType == int.class) {
          for (int c : (int[])fieldObj) {
             out.writeInt(c);
          }
-      } else if (type == long[].class) {
+      } else if (componentType == long.class) {
          for (long c : (long[])fieldObj) {
             out.writeLong(c);
          }
-      } else if (type == float[].class) {
+      } else if (componentType == float.class) {
          for (float c : (float[])fieldObj) {
             out.writeFloat(c);
          }
-      } else if (type == double[].class) {
+      } else if (componentType == double.class) {
          for (double c : (double[])fieldObj) {
             out.writeDouble(c);
          }
       } else {
-         Type componentType = FieldCommon.componentType(type);
+         // !! Should probably check raw component type here for fast fail.
          for (Object c : (Object[])fieldObj) {
             serialize(componentType, c);
          }

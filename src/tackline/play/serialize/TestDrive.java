@@ -234,6 +234,25 @@ public class TestDrive {
          return "WithWithVarVarT<"+java.util.Objects.toString(valuePoint)+">";
       }
    }
+   public static class WithGenericArray {
+      private Var<Point>[] array;
+      public WithGenericArray() { // for serial
+      }
+      /* pp */ WithGenericArray(Var<Point>[] array) { // for us
+         this.array = array;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof WithGenericArray &&
+            java.util.Objects.deepEquals(((WithGenericArray)other).array, array);
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return java.util.Arrays.toString(array);
+      }
+   }
    public static void main(String[] args) {
       check(Point.class, new Point(1, 2));
       check(WithPrimitiveArray.class, new WithPrimitiveArray(new int[][] {{ 1, 2 }, { 3, 4 }}));
@@ -267,7 +286,8 @@ public class TestDrive {
       check(WithVarVar.class, new WithVarVar(new Var<>(new Var<>(new Point(14, 15)))));
       check(WithVarArray.class, new WithVarArray(new VarArray<>(new Point[] { new Point(15, 16) })));
       check(WithVarVarArray.class, new WithVarVarArray(new VarVarArray<>(new Var<>(new Point[] { new Point(15, 16) }))));
-      check(WithWithVarVarT.class, new WithWithVarVarT(new WithVarVarT<>(new Var<>(new Var<> (new Point(15, 16))))));
+      check(WithWithVarVarT.class, new WithWithVarVarT(new WithVarVarT<>(new Var<>(new Var<>(new Point(15, 16))))));
+      check(WithGenericArray.class, new WithGenericArray((Var<Point>[])new Var<?>[] { new Var<>(new Point(20, 21))}));
    }
    private static <T> void check(Class<T> clazz, T obj){
       Object copy = copy(clazz, obj);
