@@ -4,7 +4,7 @@ import java.lang.reflect.*;
 import java.io.*;
 import java.util.*;
 
-public final class FieldSerializer {
+public class FieldSerializer {
    private static class Ref {
       private final Type type;
       private final long id;
@@ -17,13 +17,13 @@ public final class FieldSerializer {
    private final Map<Object,Ref> backRefs = new IdentityHashMap<>();
    private final Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
    private long nextId = 1;
-   private FieldSerializer(DataOutput out) {
+   /* pp */ FieldSerializer(DataOutput out) {
       this.out = out;
    }
    public static <T> void serialize(DataOutput out, Class<T> clazz, T obj) throws IOException {
       new FieldSerializer(out).serialize(clazz, obj);
    }
-   private void serialize(Type type, Object obj) throws IOException {
+   /* pp */ void serialize(Type type, Object obj) throws IOException {
       Ref backRef = backRefs.get(obj);
       if (backRef != null) {
          out.writeUTF("%");

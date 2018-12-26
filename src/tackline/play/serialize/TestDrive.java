@@ -2,11 +2,15 @@ package tackline.play.serialize;
 
 import java.awt.Point;
 import java.io.*;
+import java.lang.reflect.*;
 
 // Smoke test. We don't claim this is thorough testing. 
 public class TestDrive {
    public static class WithPrimitiveArray {
       private int[][] array;
+      public int[][] array() {
+        return arrayClone(array);
+      }
       public WithPrimitiveArray() { // for serial
       }
       /* pp */ WithPrimitiveArray(int[][] array) { // for us
@@ -26,6 +30,9 @@ public class TestDrive {
    }
    public static class WithArray {
       private Point[][] array;
+      public Point[][] array() {
+         return arrayClone(array); // !! Should clone Point to, but Point sucks...
+      }
       public WithArray() { // for serial
       }
       /* pp */ WithArray(Point[][] array) { // for us
@@ -46,6 +53,9 @@ public class TestDrive {
    
    public static class WithField {
       private Point field;
+      public Point field() {
+         return field;
+      }
       public WithField() { // for serial
       }
       /* pp */ WithField(Point field) { // for us
@@ -65,6 +75,9 @@ public class TestDrive {
    }
    public static class Var<T> {
       private T value;
+      public T value() {
+         return value; // !! How do we make this safe?
+      }
       public Var() {
       }
       public Var(T value) {
@@ -84,6 +97,9 @@ public class TestDrive {
    }
    public static class VarArray<T> {
       private T[] value;
+      public T[] value() {
+         return arrayClone(value);
+      }
       public VarArray() {
       }
       public VarArray(T[] value) {
@@ -103,6 +119,9 @@ public class TestDrive {
    }
    public static class VarVarArray<S> {
       private Var<S[]> value;
+      public Var<S[]> value() {
+         return value;
+      }
       public VarVarArray() {
       }
       public VarVarArray(Var<S[]> value) {
@@ -122,6 +141,9 @@ public class TestDrive {
    }
    public static class WithVar {
       private Var<Point> valuePoint;
+      public Var<Point> valuePoint() {
+         return valuePoint;
+      }
       public WithVar() {
       }
       public WithVar(Var<Point> valuePoint) {
@@ -141,6 +163,9 @@ public class TestDrive {
    }
    public static class WithVarVarT<T> {
       private Var<Var<T>> value;
+      public Var<Var<T>> value() {
+         return value;
+      }
       public WithVarVarT() {
       }
       public WithVarVarT(Var<Var<T>> value) {
@@ -160,6 +185,9 @@ public class TestDrive {
    }
    public static class WithVarVar {
       private Var<Var<Point>> valuePoint;
+      public Var<Var<Point>> valuePoint() {
+         return valuePoint;
+      }
       public WithVarVar() {
       }
       public WithVarVar(Var<Var<Point>> valuePoint) {
@@ -179,6 +207,9 @@ public class TestDrive {
    }
    public static class WithVarArray {
       private VarArray<Point> valuePoint;
+      public VarArray<Point> valuePoint() {
+         return valuePoint;
+      }
       public WithVarArray() {
       }
       public WithVarArray(VarArray<Point> valuePoint) {
@@ -198,6 +229,9 @@ public class TestDrive {
    }
    public static class WithVarVarArray {
       private VarVarArray<Point> valuePoint;
+      public VarVarArray<Point> valuePoint() {
+         return valuePoint;
+      }
       public WithVarVarArray() {
       }
       public WithVarVarArray(VarVarArray<Point> valuePoint) {
@@ -217,6 +251,9 @@ public class TestDrive {
    }
    public static class WithWithVarVarT {
       private WithVarVarT<Point> valuePoint;
+      public WithVarVarT<Point> valuePoint() {
+         return valuePoint;
+      }
       public WithWithVarVarT() {
       }
       public WithWithVarVarT(WithVarVarT<Point> valuePoint) {
@@ -236,6 +273,9 @@ public class TestDrive {
    }
    public static class WithGenericArray {
       private Var<Point>[] array;
+      public Var<Point>[] array() {
+         return arrayClone(array);
+      }
       public WithGenericArray() { // for serial
       }
       /* pp */ WithGenericArray(Var<Point>[] array) { // for us
@@ -253,7 +293,7 @@ public class TestDrive {
          return java.util.Arrays.toString(array);
       }
    }
-   public static void main(String[] args) {
+   public static void main(String[] args) throws IOException {
       check(Point.class, new Point(1, 2));
       check(WithPrimitiveArray.class, new WithPrimitiveArray(new int[][] {{ 1, 2 }, { 3, 4 }}));
       check(WithArray.class, new WithArray(new Point[][] {{ new Point(1, 2) }, { new Point(3, 4) }}));
@@ -274,8 +314,10 @@ public class TestDrive {
       // Back reference
       Point[] repeat = { new Point(1, 2), null };
       repeat[1] = repeat[0];
-      Point[] repeatCopy = copy(Point[].class, repeat);
-      asrt(repeatCopy[0] == repeatCopy[1], "Repeated instance not the same instance");
+      Point[] repeatFieldCopy = fieldCopy(Point[].class, repeat);
+      asrt(repeatFieldCopy[0] == repeatFieldCopy[1], "Repeated instance not the same instance");
+      Point[] repeatValueFieldCopy = valueFieldCopy(Point[].class, repeat);
+      asrt(repeatValueFieldCopy[0] == repeatValueFieldCopy[1], "Repeated instance not the same instance");
       
       // nulls
       check(WithField.class, new WithField(null));
@@ -289,28 +331,39 @@ public class TestDrive {
       check(WithWithVarVarT.class, new WithWithVarVarT(new WithVarVarT<>(new Var<>(new Var<>(new Point(15, 16))))));
       check(WithGenericArray.class, new WithGenericArray((Var<Point>[])new Var<?>[] { new Var<>(new Point(20, 21))}));
    }
-   private static <T> void check(Class<T> clazz, T obj){
-      Object copy = copy(clazz, obj);
+   private static <T> void check(Class<T> clazz, T obj) throws IOException {
+      assertEquals("Fields", obj, fieldCopy(clazz, obj));
+      assertEquals("Fields", obj, valueFieldCopy(clazz, obj));
+   }
+   private static void assertEquals(String msg, Object expected, Object actual) {
       asrt(
-         java.util.Objects.deepEquals(obj, copy),
-         "expected <"+obj+"> was <"+copy+">"
+         java.util.Objects.deepEquals(expected, actual),
+         msg+": expected <"+expected+"> was <"+actual+">"
       );
    }
-   private static <T> T copy(Class<T> clazz, T obj){
+   private static <T> T fieldCopy(Class<T> clazz, T obj) throws IOException {
+      return fieldFromBytes(fieldToBytes(clazz, obj), clazz);
+   }
+   private static <T> T valueFieldCopy(Class<T> clazz, T obj) throws IOException {
+      return fieldFromBytes(valueToBytes(clazz, obj), clazz);
+   }
+   private static <T> T fieldFromBytes(byte[] bytes, Class<T> clazz) throws IOException {
+      return FieldDeserializer.deserialize(
+         new DataInputStream(new ByteArrayInputStream(
+            bytes
+         )),
+         clazz
+      );
+   }
+   private static <T> byte[] valueToBytes(Class<T> clazz, T obj) throws IOException {
       ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-      try {
-         FieldSerializer.serialize(new DataOutputStream(byteOut), clazz, obj);
-         return FieldDeserializer.deserialize(
-            new DataInputStream(
-               new ByteArrayInputStream(
-                  byteOut.toByteArray()
-               )
-            ),
-            obj.getClass().asSubclass(clazz)
-         );
-      } catch (IOException exc) {
-         throw new Error(exc);
-      }
+      ValueSerializer.serialize(new DataOutputStream(byteOut), clazz, obj);
+      return byteOut.toByteArray();
+   }
+   private static <T> byte[] fieldToBytes(Class<T> clazz, T obj) throws IOException {
+      ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+      FieldSerializer.serialize(new DataOutputStream(byteOut), clazz, obj);
+      return byteOut.toByteArray();
    }
    private static void asrt(boolean that, String msg) {
       if (!that) {
@@ -319,5 +372,24 @@ public class TestDrive {
    }
    private static void fail(String msg) {
       throw new AssertionError(msg);
+   }
+   private static <T> T arrayClone(T obj) {
+      if (!obj.getClass().isArray()) {
+         throw new IllegalArgumentException("Must be an array.");
+      }
+      return maybeArrayClone(obj);
+   }
+   private static <T> T maybeArrayClone(T obj) {
+      Class<?> clazz = obj.getClass();
+      if (clazz.isArray()) {
+         int len = Array.getLength(obj);
+         Object newArray = Array.newInstance(clazz.getComponentType(), len);
+         for (int i=0; i<len; ++i) {
+            Array.set(obj, i, Array.get(maybeArrayClone(obj), i));
+         }
+         return (T)clazz.cast(newArray);
+      } else {
+         return obj;
+      }
    }
 }
