@@ -14,6 +14,9 @@ public class TestDrive {
       public int y() {
          return y;
       }
+      public static Point of(int x, int y) {
+         return new Point(x, y);
+      }
       public Point() {
       }
       public Point(int x, int y) {
@@ -37,12 +40,15 @@ public class TestDrive {
    public static class WithPrimitiveArray {
       private int[][] array;
       public int[][] array() {
-        return array;//arrayClone(array);
+        return arrayClone(array);
+      }
+      public static WithPrimitiveArray of(int[][] array) {
+         return new WithPrimitiveArray(array);
       }
       public WithPrimitiveArray() { // for serial
       }
       /* pp */ WithPrimitiveArray(int[][] array) { // for us
-         this.array = array;
+         this.array = arrayClone(array);
       }
       @Override public boolean equals(Object other) {
          return
@@ -60,6 +66,9 @@ public class TestDrive {
       private Point[][] array;
       public Point[][] array() {
          return arrayClone(array); // !! Should clone Point to, but Point sucks...
+      }
+      public static WithArray of(Point[][] array) {
+         return new WithArray(arrayClone(array));
       }
       public WithArray() { // for serial
       }
@@ -84,10 +93,13 @@ public class TestDrive {
       public Point field() {
          return field;
       }
+      public static WithField of(Point field) {
+         return new WithField(field);
+      }
       public WithField() { // for serial
       }
       /* pp */ WithField(Point field) { // for us
-         this.field = field;
+         this.field = field==null ? null : Point.of(field.x, field.y);
       }
       @Override public boolean equals(Object other) {
          return
@@ -105,6 +117,9 @@ public class TestDrive {
       private T value;
       public T value() {
          return value; // !! How do we make this safe?
+      }
+      public static <T> Var<T> of(T value) {
+         return new Var<T>(value);
       }
       public Var() {
       }
@@ -128,10 +143,13 @@ public class TestDrive {
       public T[] value() {
          return arrayClone(value);
       }
+      public static <T> VarArray<T> of(T[] value) {
+         return new VarArray<T>(value);
+      }
       public VarArray() {
       }
       public VarArray(T[] value) {
-         this.value = value;
+         this.value = arrayClone(value);
       }
       @Override public boolean equals(Object other) {
          return
@@ -150,10 +168,13 @@ public class TestDrive {
       public Var<S[]> value() {
          return value;
       }
+      public static <S> VarVarArray<S> of(Var<S[]> value) {
+         return new VarVarArray<S>(value);
+      }
       public VarVarArray() {
       }
       public VarVarArray(Var<S[]> value) {
-         this.value = value;
+         this.value = value;  // !!clone?
       }
       @Override public boolean equals(Object other) {
          return
@@ -171,6 +192,9 @@ public class TestDrive {
       private Var<Point> valuePoint;
       public Var<Point> valuePoint() {
          return valuePoint;
+      }
+      public static WithVar of(Var<Point> valuePoint) {
+         return new WithVar(valuePoint);
       }
       public WithVar() {
       }
@@ -194,6 +218,9 @@ public class TestDrive {
       public Var<Var<T>> value() {
          return value;
       }
+      public static <T> WithVarVarT<T> of(Var<Var<T>> value) {
+         return new WithVarVarT<T>(value);
+      }
       public WithVarVarT() {
       }
       public WithVarVarT(Var<Var<T>> value) {
@@ -215,6 +242,9 @@ public class TestDrive {
       private Var<Var<Point>> valuePoint;
       public Var<Var<Point>> valuePoint() {
          return valuePoint;
+      }
+      public static WithVarVar of(Var<Var<Point>> valuePoint) {
+         return new WithVarVar(valuePoint);
       }
       public WithVarVar() {
       }
@@ -238,6 +268,9 @@ public class TestDrive {
       public VarArray<Point> valuePoint() {
          return valuePoint;
       }
+      public static WithVarArray of(VarArray<Point> valuePoint) {
+         return new WithVarArray(valuePoint);
+      }
       public WithVarArray() {
       }
       public WithVarArray(VarArray<Point> valuePoint) {
@@ -259,6 +292,9 @@ public class TestDrive {
       private VarVarArray<Point> valuePoint;
       public VarVarArray<Point> valuePoint() {
          return valuePoint;
+      }
+      public static WithVarVarArray of(VarVarArray<Point> valuePoint) {
+         return new WithVarVarArray(valuePoint);
       }
       public WithVarVarArray() {
       }
@@ -282,6 +318,9 @@ public class TestDrive {
       public WithVarVarT<Point> valuePoint() {
          return valuePoint;
       }
+      public static WithWithVarVarT of(WithVarVarT<Point> valuePoint) {
+         return new WithWithVarVarT(valuePoint);
+      }
       public WithWithVarVarT() {
       }
       public WithWithVarVarT(WithVarVarT<Point> valuePoint) {
@@ -303,6 +342,9 @@ public class TestDrive {
       private Var<Point>[] array;
       public Var<Point>[] array() {
          return arrayClone(array);
+      }
+      public static WithGenericArray of(Var<Point>[] valuePoint) {
+         return new WithGenericArray(valuePoint);
       }
       public WithGenericArray() { // for serial
       }

@@ -7,6 +7,7 @@ Goals
  - See how easy it is to write a serializer.
  - Explore why some of the decisions are made.
  - Note how unhelpful the libraries we are using are.
+ - Start with a field serializer (because that seems easy) and move on to value classes with proper interfaces.
  - Have a bit of fun.
 
 Non-goals
@@ -75,3 +76,4 @@ Anything else.
  - I used a generic constructor! (though not for anything particularly useuful)
  - Generics for handling return and exception types are terrible.
  - Keywords considered a bad idea (context sensitive keywords moreso).
+ - Why am I bothering with arrays of reference types - they suck. (A. to get a grip on what is going on in the reflection API.)

@@ -68,17 +68,12 @@ public class ValueSerializer extends FieldSerializer {
          if (
             !Modifier.isStatic(mods) &&
             Modifier.isPublic(mods) &&
+            method.getReturnType() != void.class &&
             method.getParameterTypes().length == 0 &&
             !isSpecial(method.getName()) &&
             isUnchecked(method.getGenericExceptionTypes()) && // !! Realise type params!
             !hasCallerSensitive(method.getAnnotations())
          ) {
-            java.security.AccessController.doPrivileged(
-               (java.security.PrivilegedAction<Void>)() -> {
-                  method.setAccessible(true);
-                  return null;
-               }
-            );
             serialMethods.add(method);
          }
       }
@@ -112,8 +107,9 @@ public class ValueSerializer extends FieldSerializer {
       return
           methodName.equals("hashCode") ||
           methodName.equals("toString") ||
-          methodName.equals("wait") ||
-          methodName.equals("notify") ||
-          methodName.equals("notifyAll");
+          methodName.equals("clone") || // Not public/has exception.
+          methodName.equals("wait") || // Has exception/void return.
+          methodName.equals("notify") || // void return.
+          methodName.equals("notifyAll"); // void return.
    }
 }

@@ -5,7 +5,7 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.*;
 
-public final class FieldDeserializer {
+public class FieldDeserializer {
    private static class Ref {
       private final Type type;
       private final Object obj;
@@ -15,14 +15,14 @@ public final class FieldDeserializer {
       }
    }
    private final Map<Long,Ref> backRefs = new HashMap<>();
-   private final DataInput in;
-   private FieldDeserializer(DataInput in) {
+   /* pp */ final DataInput in;
+   /* pp */ FieldDeserializer(DataInput in) {
       this.in = in;
    }
    public static <T> T deserialize(DataInput in, Class<T> clazz) throws IOException {
       return clazz.cast(new FieldDeserializer(in).deserialize(clazz));
    }
-   public Object deserialize(Type type) throws IOException {
+   /* pp */ Object deserialize(Type type) throws IOException {
       String clazzName = in.readUTF(); //!!name
       if (clazzName.equals("%")) {
          // !! Doesn't check type.
@@ -62,7 +62,7 @@ public final class FieldDeserializer {
    private void labelForBackRef(Type type, Object obj) throws IOException {
       backRefs.put(in.readLong(), new Ref(type, obj));
    }
-   private <T> T object(Class<T> clazz, Type[] typeArgs) throws IOException {
+   /* pp */ <T> T object(Class<T> clazz, Type[] typeArgs) throws IOException {
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
