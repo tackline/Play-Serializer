@@ -13,7 +13,7 @@ public class FieldSerializer {
          this.id = id;
       }
    }
-   private final DataOutput out;
+   /* pp */ final DataOutput out;
    private final Map<Object,Ref> backRefs = new IdentityHashMap<>();
    private final Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
    private long nextId = 1;
@@ -62,7 +62,7 @@ public class FieldSerializer {
       backRefs.put(obj, new Ref(type, id));
       out.writeLong(id);
    }
-   private void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
+   /* pp */ void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
       @SuppressWarnings("unused")
       Constructor<?> ctor = FieldCommon.nullaryConstructor(clazz);

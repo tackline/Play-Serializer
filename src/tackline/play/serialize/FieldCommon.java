@@ -99,4 +99,17 @@ class FieldCommon {
          throw new IllegalArgumentException("Unknown array type type");
       }
    }
+   
+   static Error throwUnchecked(InvocationTargetException exc) {
+      Throwable target = exc.getTargetException();
+      if (target instanceof Error) {
+         throw (Error)target;
+      } else if (target instanceof RuntimeException) {
+         throw (RuntimeException)target;
+      } else {
+         // Somebody has been very naughty.
+         // !! We don't like this API - we should have already checked.
+         throw new Error(target);
+      }
+   }
 }

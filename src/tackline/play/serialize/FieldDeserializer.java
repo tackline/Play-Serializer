@@ -78,16 +78,7 @@ public final class FieldDeserializer {
          // !! We don't like this API - this cannot happen...
          throw new Error(exc);
       } catch (InvocationTargetException exc) {
-         Throwable target = exc.getTargetException();
-         if (target instanceof Error) {
-            throw (Error)target;
-         } else if (target instanceof RuntimeException) {
-            throw (RuntimeException)target;
-         } else {
-            // Somebody has been very naughty.
-            // !! We don't like this API - we have already checked.
-            throw new Error(target);
-         }
+         throw FieldCommon.throwUnchecked(exc);
       }
       // !! We don't do class hierarchies.
       Map<String,Field> nameFields = FieldCommon.serialFields(clazz).stream()

@@ -1,15 +1,43 @@
 package tackline.play.serialize;
 
-import java.awt.Point;
 import java.io.*;
 import java.lang.reflect.*;
 
 // Smoke test. We don't claim this is thorough testing. 
 public class TestDrive {
+   public static class Point {
+      int x;
+      int y;
+      public int x() {
+         return x;
+      }
+      public int y() {
+         return y;
+      }
+      public Point() {
+      }
+      public Point(int x, int y) {
+         this.x = x;
+         this.y = y;
+      }
+      @Override public boolean equals(Object other) {
+         return
+            other instanceof Point &&
+            ((Point)other).x == x &&
+            ((Point)other).y == y;
+      }
+      @Override public int hashCode() {
+         return 1; // Correctness over efficiency!
+      }
+      @Override public String toString() {
+         return "Point("+x+", "+y+")";
+      }
+   }
+      
    public static class WithPrimitiveArray {
       private int[][] array;
       public int[][] array() {
-        return arrayClone(array);
+        return array;//arrayClone(array);
       }
       public WithPrimitiveArray() { // for serial
       }
@@ -380,12 +408,15 @@ public class TestDrive {
       return maybeArrayClone(obj);
    }
    private static <T> T maybeArrayClone(T obj) {
+      if (obj == null) {
+         return null;
+      }
       Class<?> clazz = obj.getClass();
       if (clazz.isArray()) {
          int len = Array.getLength(obj);
          Object newArray = Array.newInstance(clazz.getComponentType(), len);
          for (int i=0; i<len; ++i) {
-            Array.set(obj, i, Array.get(maybeArrayClone(obj), i));
+            Array.set(newArray, i, maybeArrayClone(Array.get(obj, i)));
          }
          return (T)clazz.cast(newArray);
       } else {
