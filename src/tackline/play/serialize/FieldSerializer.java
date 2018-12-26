@@ -49,9 +49,6 @@ public final class FieldSerializer {
             FieldSerializer.this.array(componentType, obj);
             return null;
          }
-         public IOException error(String msg) throws IOException {
-            throw exc(msg);
-         }
       });
    }
    private void backRef(Ref backRef, Type type, Object obj) throws IOException {

@@ -45,9 +45,6 @@ public final class FieldDeserializer {
          public Object array(Type componentType) throws IOException {
             return FieldDeserializer.this.array(componentType);
          }
-         public IOException error(String msg) throws IOException {
-            throw exc(msg);
-         }
       });
    }
    private Object backRef(Type type) throws IOException {

@@ -1,6 +1,5 @@
 package tackline.play.serialize;
 
-import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -69,12 +68,12 @@ class FieldCommon {
                extracted.array(FieldCommon.componentType(rawClazz)) :
                extracted.class_(rawClazz, typeArgs);
          } else {
-            throw extracted.error("Don't know what that raw type is supposed to be");
+            throw new IllegalArgumentException("Don't know what that raw type is supposed to be");
          }
       } else if (type instanceof GenericArrayType) {
          return extracted.array(FieldCommon.componentType(type));
       } else {
-         throw extracted.error("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
+         throw new IllegalArgumentException("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
       }
    }
    
@@ -91,15 +90,13 @@ class FieldCommon {
       }
       return Collections.unmodifiableMap(map);
    }
-   static Type componentType(Type type) {
-      Type componentType;
+   private static Type componentType(Type type) {
       if (type instanceof Class<?>) {
-         componentType = ((Class<?>)type).getComponentType();
+         return ((Class<?>)type).getComponentType();
       } else if (type instanceof GenericArrayType) {
-         componentType = ((GenericArrayType)type).getGenericComponentType();
+         return ((GenericArrayType)type).getGenericComponentType();
       } else {
          throw new IllegalArgumentException("Unknown array type type");
       }
-      return componentType;
    }
 }
