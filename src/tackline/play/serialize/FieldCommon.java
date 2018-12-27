@@ -3,7 +3,7 @@ package tackline.play.serialize;
 import java.lang.reflect.*;
 import java.util.*;
 
-class FieldCommon {
+class FieldCommon { // !1 This name is no longer accurate.
    private FieldCommon() {
    }
    static <T> Constructor<T> nullaryConstructor(Class<T> clazz) {
@@ -15,18 +15,28 @@ class FieldCommon {
       }
       try {
          Constructor<T>  ctor = clazz.getDeclaredConstructor();
-         for (Class<?> excType : ctor.getExceptionTypes()) {
-            if (!(
-               Error.class.isAssignableFrom(excType) || 
-               RuntimeException.class.isAssignableFrom(excType)
-            )) {
-               throw new IllegalArgumentException("Constructor throws unchecked exception");
-            }
+         if (!isUnchecked(ctor.getGenericExceptionTypes())) {
+            throw new IllegalArgumentException("Constructor throws unchecked exception");
          }
          return ctor;
       } catch (NoSuchMethodException exc) {
          throw new IllegalArgumentException("We must have a nullary argument constructor");
       }
+   }
+   static boolean isUnchecked(Type[] excTypes) {
+      for (Type excType : excTypes) {
+         if (!(excType instanceof Class<?>)) {
+            return false;
+         }
+         Class<?> excClass = (Class<?>)excType;
+         if (!(
+            excClass.isAssignableFrom(RuntimeException.class) || // !! check
+            excClass.isAssignableFrom(Error.class) // !! check
+         )) {
+            return false;
+         }
+      }
+      return true;
    }
    
    static List<Field> serialFields(Class<?> clazz) {
@@ -76,7 +86,6 @@ class FieldCommon {
          throw new IllegalArgumentException("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
       }
    }
-   
    static <K,V> Map<K,V> zipMap(K[] keys, V[] values) {
       if (keys.length != values.length) {
          throw new IllegalArgumentException();

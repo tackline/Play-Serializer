@@ -4,6 +4,7 @@ import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.Arrays;
 import java.util.Map;
 
 class TypeParamMap {
@@ -52,6 +53,17 @@ class TypeParamMap {
             public Type getOwnerType() {
                return actualOwnerType;
             }
+            // Interface description requires equals method.
+            @Override public boolean equals(Object obj) {
+               if (!(obj instanceof ParameterizedType)) {
+                  return false;
+               }
+               ParameterizedType other = (ParameterizedType)obj;
+               return
+                   Arrays.equals(this.getActualTypeArguments(), other.getActualTypeArguments()) &&
+                   this.getOwnerType().equals(other.getOwnerType()) &&
+                   this.getRawType().equals(other.getRawType());
+            }
          };
       } else if (type instanceof GenericArrayType) {
          GenericArrayType genericArrayType = (GenericArrayType)type;
@@ -62,6 +74,15 @@ class TypeParamMap {
             // !! getTypeName? toString? equals? hashCode?
             public Type getGenericComponentType() {
                return actualComponentType;
+            }
+            // Apparently don't have to provide an equals, but we do need to.
+            @Override public boolean equals(Object obj) {
+               if (!(obj instanceof GenericArrayType)) {
+                  return false;
+               }
+               GenericArrayType other = (GenericArrayType)obj;
+               return
+                   this.getGenericComponentType().equals(other.getGenericComponentType());
             }
          };
       } else {

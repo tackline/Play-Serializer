@@ -40,7 +40,7 @@ public class FieldDeserializer {
    private Object refType(Type type) throws IOException {
       return FieldCommon.extractParameters(type, new ParameterExtract<Object,IOException>() {
          public Object class_(Class<?> rawType, Type[] typeArgs) throws IOException {
-            return object(rawType, typeArgs);
+            return object(type, rawType, typeArgs);
          }
          public Object array(Type componentType) throws IOException {
             return FieldDeserializer.this.array(componentType);
@@ -62,7 +62,7 @@ public class FieldDeserializer {
    private void labelForBackRef(Type type, Object obj) throws IOException {
       backRefs.put(in.readLong(), new Ref(type, obj));
    }
-   /* pp */ <T> T object(Class<T> clazz, Type[] typeArgs) throws IOException {
+   /* pp */ <T> T object(Type type, Class<T> clazz, Type[] typeArgs) throws IOException {
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
@@ -93,30 +93,30 @@ public class FieldDeserializer {
             // Java Serialization just ignores this. (Also the XML way.)
             throw new IOException("field <"+name+"> in stream not in class");
          }
-         Type type = field.getGenericType();
+         Type fieldType = field.getGenericType();
          try {
-            if (type instanceof Class<?> && ((Class<?>)type).isPrimitive()) {
+            if (fieldType instanceof Class<?> && ((Class<?>)fieldType).isPrimitive()) {
                if (type == boolean.class) {
                   field.setBoolean(obj, in.readBoolean());
-               } else if (type == byte.class) {
+               } else if (fieldType == byte.class) {
                   field.setByte(obj, in.readByte());
-               } else if (type == char.class) {
+               } else if (fieldType == char.class) {
                   field.setChar(obj, in.readChar());
-               } else if (type == short.class) {
+               } else if (fieldType == short.class) {
                   field.setShort(obj, in.readShort());
-               } else if (type == int.class) {
+               } else if (fieldType == int.class) {
                   field.setInt(obj, in.readInt());
-               } else if (type == long.class) {
+               } else if (fieldType == long.class) {
                   field.setLong(obj, in.readLong());
-               } else if (type == float.class) {
+               } else if (fieldType == float.class) {
                   field.setFloat(obj, in.readFloat());
-               } else if (type == double.class) {
+               } else if (fieldType == double.class) {
                   field.setDouble(obj, in.readDouble());
                } else {
                   throw new Error("Unknown primitive type");
                }
             } else {
-               field.set(obj, deserialize(typeMap.substitute(type)));
+               field.set(obj, deserialize(typeMap.substitute(fieldType)));
             }
          } catch (IllegalAccessException exc) {
             // This can't happen.

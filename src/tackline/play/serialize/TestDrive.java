@@ -343,8 +343,8 @@ public class TestDrive {
       public Var<Point>[] array() {
          return arrayClone(array);
       }
-      public static WithGenericArray of(Var<Point>[] valuePoint) {
-         return new WithGenericArray(valuePoint);
+      public static WithGenericArray of(Var<Point>[] array) {
+         return new WithGenericArray(array);
       }
       public WithGenericArray() { // for serial
       }
@@ -394,7 +394,7 @@ public class TestDrive {
       check(WithArray.class, new WithArray(new Point[][] { null }));
 
       // Generics
-      check(WithVar.class, new WithVar(new Var<>(new Point(12, 13))));
+      check(WithVar.class, new WithVar(new Var<>(new Point(12, 13)))); // !! return type genesis check
       check(WithVarVar.class, new WithVarVar(new Var<>(new Var<>(new Point(14, 15)))));
       check(WithVarArray.class, new WithVarArray(new VarArray<>(new Point[] { new Point(15, 16) })));
       check(WithVarVarArray.class, new WithVarVarArray(new VarVarArray<>(new Var<>(new Point[] { new Point(15, 16) }))));
@@ -404,12 +404,16 @@ public class TestDrive {
    private static <T> void check(Class<T> clazz, T obj) throws IOException {
       assertEquals("Fields", obj, fieldCopy(clazz, obj));
       assertEquals("Fields", obj, valueFieldCopy(clazz, obj));
+      assertEquals("Fields", obj, valueCopy(clazz, obj));
    }
    private static void assertEquals(String msg, Object expected, Object actual) {
       asrt(
          java.util.Objects.deepEquals(expected, actual),
          msg+": expected <"+expected+"> was <"+actual+">"
       );
+   }
+   private static <T> T valueCopy(Class<T> clazz, T obj) throws IOException {
+      return valueFromBytes(valueToBytes(clazz, obj), clazz);
    }
    private static <T> T fieldCopy(Class<T> clazz, T obj) throws IOException {
       return fieldFromBytes(fieldToBytes(clazz, obj), clazz);
@@ -419,11 +423,16 @@ public class TestDrive {
    }
    private static <T> T fieldFromBytes(byte[] bytes, Class<T> clazz) throws IOException {
       return FieldDeserializer.deserialize(
-         new DataInputStream(new ByteArrayInputStream(
-            bytes
-         )),
-         clazz
+         fromBytes(bytes), clazz
       );
+   }
+   private static <T> T valueFromBytes(byte[] bytes, Class<T> clazz) throws IOException {
+      return ValueDeserializer.deserialize(
+         fromBytes(bytes), clazz
+      );
+   }
+   private static DataInput fromBytes(byte[] bytes) {
+      return new DataInputStream(new ByteArrayInputStream(bytes));
    }
    private static <T> byte[] valueToBytes(Class<T> clazz, T obj) throws IOException {
       ByteArrayOutputStream byteOut = new ByteArrayOutputStream();

@@ -71,28 +71,13 @@ public class ValueSerializer extends FieldSerializer {
             method.getReturnType() != void.class &&
             method.getParameterTypes().length == 0 &&
             !isSpecial(method.getName()) &&
-            isUnchecked(method.getGenericExceptionTypes()) && // !! Realise type params!
+            FieldCommon.isUnchecked(method.getGenericExceptionTypes()) && // !! Realise type params!
             !hasCallerSensitive(method.getAnnotations())
          ) {
             serialMethods.add(method);
          }
       }
       return serialMethods;
-   }
-   private static boolean isUnchecked(Type[] excTypes) {
-      for (Type excType : excTypes) {
-         if (!(excType instanceof Class<?>)) {
-            return false;
-         }
-         Class<?> excClass = (Class<?>)excType;
-         if (!(
-            excClass.isAssignableFrom(RuntimeException.class) || // !! check
-            excClass.isAssignableFrom(Error.class) // !! check
-         )) {
-            return false;
-         }
-      }
-      return true;
    }
    private static boolean hasCallerSensitive(Annotation[] annotations) {
       for (Annotation annotation : annotations) {
