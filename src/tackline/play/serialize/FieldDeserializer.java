@@ -15,7 +15,7 @@ public class FieldDeserializer {
       }
    }
    private final Map<Long,Ref> backRefs = new HashMap<>();
-   /* pp */ final DataInput in;
+   private final DataInput in;
    /* pp */ FieldDeserializer(DataInput in) {
       this.in = in;
    }
@@ -62,8 +62,43 @@ public class FieldDeserializer {
    private void labelForBackRef(Type type, Object obj) throws IOException {
       backRefs.put(in.readLong(), new Ref(type, obj));
    }
-   /* pp */ <T> T object(Type type, Class<T> clazz, Type[] typeArgs) throws IOException {
+   private <T> T object(Type type, Class<T> clazz, Type[] typeArgs) throws IOException {
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
+      ObjectFormat format = format(clazz);
+      
+      // !! We don't do class hierarchies.
+
+      Map<String,Object> data = new HashMap<>();
+      for (;;) {
+         String name = in.readUTF();
+         if (name.equals(".")) {
+            break;
+         }
+         int index = format.names().indexOf(name);
+         if (index == -1) {
+            // Java Serialization just ignores this. (Also the XML way.)
+            throw new IOException("field <"+name+"> in stream not in class");
+         }
+         DataFormat dataFormat = format.dataFormats().get(index);
+         Type fieldType = format.types().get(index);
+         switch (dataFormat) {
+            case BOOLEAN: data.put(name, in.readBoolean()); break;
+            case BYTE   : data.put(name, in.readByte()); break;
+            case CHAR   : data.put(name, in.readChar()); break;
+            case SHORT  : data.put(name, in.readShort()); break;
+            case INT    : data.put(name, in.readInt()); break;
+            case LONG   : data.put(name, in.readLong()); break;
+            case FLOAT  : data.put(name, in.readFloat()); break;
+            case DOUBLE : data.put(name, in.readDouble()); break;
+            case REF    : data.put(name, deserialize(typeMap.substitute(fieldType))); break;
+            default: throw new Error("???");
+         }
+      }
+      
+      return newObject(type, clazz, data, typeMap);
+   }
+   // !! type & tpyeMap for ValueDeserializer
+   /* pp */ <T> T newObject(Type type, Class<T> clazz, Map<String,Object> data, TypeParamMap typeMap) throws IOException {
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -80,44 +115,19 @@ public class FieldDeserializer {
       } catch (InvocationTargetException exc) {
          throw FieldCommon.throwUnchecked(exc);
       }
-      // !! We don't do class hierarchies.
       Map<String,Field> nameFields = FieldCommon.serialFields(clazz).stream()
          .collect(Collectors.toMap(f -> f.getName(), f -> f));
-      for (;;) {
-         String name = in.readUTF();
-         if (name.equals(".")) {
-            break;
-         }
+      
+      for (Map.Entry<String,Object> entry : data.entrySet()) {
+         String name = entry.getKey();
+         Object value = entry.getValue();
          Field field = nameFields.get(name);
          if (field == null) {
             // Java Serialization just ignores this. (Also the XML way.)
-            throw new IOException("field <"+name+"> in stream not in class");
+            throw new IOException("field <"+name+"> in stream but not in class");
          }
-         Type fieldType = field.getGenericType();
          try {
-            if (fieldType instanceof Class<?> && ((Class<?>)fieldType).isPrimitive()) {
-               if (type == boolean.class) {
-                  field.setBoolean(obj, in.readBoolean());
-               } else if (fieldType == byte.class) {
-                  field.setByte(obj, in.readByte());
-               } else if (fieldType == char.class) {
-                  field.setChar(obj, in.readChar());
-               } else if (fieldType == short.class) {
-                  field.setShort(obj, in.readShort());
-               } else if (fieldType == int.class) {
-                  field.setInt(obj, in.readInt());
-               } else if (fieldType == long.class) {
-                  field.setLong(obj, in.readLong());
-               } else if (fieldType == float.class) {
-                  field.setFloat(obj, in.readFloat());
-               } else if (fieldType == double.class) {
-                  field.setDouble(obj, in.readDouble());
-               } else {
-                  throw new Error("Unknown primitive type");
-               }
-            } else {
-               field.set(obj, deserialize(typeMap.substitute(fieldType)));
-            }
+            field.set(obj, value);
          } catch (IllegalAccessException exc) {
             // This can't happen.
             // !! We don't like this aspect of the reflection API.
@@ -125,6 +135,29 @@ public class FieldDeserializer {
          }
       }
       return obj;
+   }
+   private static ObjectFormat format(Class<?> clazz) {
+      Map<String,Field> nameFields = FieldCommon.serialFields(clazz).stream()
+         .collect(Collectors.toMap(f -> f.getName(), f -> f));
+      List<String> names = new ArrayList<>(nameFields.keySet());
+      List<DataFormat> dataFormats = new ArrayList<>();
+      List<Type> types = new ArrayList<>();
+      for (String name : names) {
+         Type fieldType = nameFields.get(name).getGenericType();
+         dataFormats.add(
+             fieldType == boolean.class ? DataFormat.BOOLEAN :
+             fieldType == byte   .class ? DataFormat.BYTE    :
+             fieldType == char   .class ? DataFormat.CHAR    :
+             fieldType == short  .class ? DataFormat.SHORT   :
+             fieldType == int    .class ? DataFormat.INT     :
+             fieldType == long   .class ? DataFormat.LONG    :
+             fieldType == float  .class ? DataFormat.FLOAT   :
+             fieldType == double .class ? DataFormat.DOUBLE  :
+                                          DataFormat.REF
+          );
+          types.add(fieldType); // !! For REF only
+      }
+      return ObjectFormat.of(names, dataFormats, types);
    }
    private Object array(Type componentType) throws IOException {
       int len = in.readInt();

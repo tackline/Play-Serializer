@@ -11,8 +11,7 @@ public class ValueDeserializer extends FieldDeserializer {
    public static <T> T deserialize(DataInput in, Class<T> clazz) throws IOException {
       return clazz.cast(new ValueDeserializer(in).deserialize(clazz));
    }
-   @Override /* pp */ <T> T object(Type type, Class<T> clazz, Type[] typeArgs) throws IOException {
-      TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
+   /* pp */ <T> T newObject(Type type, Class<T> clazz, Map<String,Object> data, TypeParamMap typeMap) throws IOException {
       Set<Method> genesises = genesisMethods(type, clazz, typeMap);
       if (genesises.isEmpty()) {
          throw new IllegalArgumentException("No genesis method for <"+clazz+">.");
@@ -31,49 +30,13 @@ public class ValueDeserializer extends FieldDeserializer {
          names[i] = name;
          types.put(name, typeMap.substitute(param.getParameterizedType()));
       }
-      Map<String, Object> nameArgs = new HashMap<>();
-      for (;;) {
-         String name = in.readUTF();
-         if (name.equals(".")) {
-            break;
-         }
-         Type propertyType = types.get(name);
-         if (propertyType == null) {
-            throw exc("Unexpected property name in stream <"+name+">");
-         }
-         final Object fieldObj;
-         if (propertyType instanceof Class<?> && ((Class<?>)propertyType).isPrimitive()) {
-            if (propertyType == boolean.class) {
-               fieldObj = in.readBoolean();
-            } else if (propertyType == byte.class) {
-               fieldObj = in.readByte();
-            } else if (propertyType == char.class) {
-               fieldObj = in.readChar();
-            } else if (propertyType == short.class) {
-               fieldObj = in.readShort();
-            } else if (propertyType == int.class) {
-               fieldObj = in.readInt();
-            } else if (propertyType == long.class) {
-               fieldObj = in.readLong();
-            } else if (propertyType == float.class) {
-               fieldObj = in.readFloat();
-            } else if (propertyType == double.class) {
-               fieldObj = in.readDouble();
-            } else {
-               throw new Error("Unknown primitive type");
-            }
-         } else {
-            fieldObj =  deserialize(propertyType);
-         }
-         nameArgs.put(name, fieldObj);
-      }
       Object[] args = new Object[paramNum];
       for (int i=0; i<paramNum; ++i) {
          String name = names[i];
-         if (!nameArgs.containsKey(name)) {
+         if (!data.containsKey(name)) {
             throw exc("Name not present in stream.");
          }
-         args[i] = nameArgs.get(name);
+         args[i] = data.get(name);
       }
       
       try {
@@ -86,7 +49,7 @@ public class ValueDeserializer extends FieldDeserializer {
          throw FieldCommon.throwUnchecked(exc);
       }
    }
-   static Set<Method> genesisMethods(Type type, Class<?> clazz, TypeParamMap typeMap) {
+   private static Set<Method> genesisMethods(Type type, Class<?> clazz, TypeParamMap typeMap) {
       if (!Modifier.isPublic(clazz.getModifiers())) {
          throw new IllegalArgumentException("Cannot create from a non-public class");
       }

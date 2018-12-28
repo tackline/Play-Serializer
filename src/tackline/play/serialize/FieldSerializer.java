@@ -13,7 +13,7 @@ public class FieldSerializer {
          this.id = id;
       }
    }
-   /* pp */ final DataOutput out;
+   private final DataOutput out;
    private final Map<Object,Ref> backRefs = new IdentityHashMap<>();
    private final Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
    private long nextId = 1;
@@ -62,44 +62,55 @@ public class FieldSerializer {
       backRefs.put(obj, new Ref(type, id));
       out.writeLong(id);
    }
-   /* pp */ void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
-      TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
-      @SuppressWarnings("unused")
-      Constructor<?> ctor = FieldCommon.nullaryConstructor(clazz);
-      // !! We don't do class hierarchies.
-      
+   /* pp */ Map<String,Object> oldObject(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
+      Map<String,Object> data = new HashMap<>();
       for (Field field : FieldCommon.serialFields(clazz)) {
-         out.writeUTF(field.getName());
          Type type = field.getGenericType();
          try {
-            if (type instanceof Class<?> && ((Class<?>)type).isPrimitive()) {
-               if (type == boolean.class) {
-                  out.writeBoolean(field.getBoolean(obj));
-               } else if (type == byte.class) {
-                  out.writeByte(field.getByte(obj));
-               } else if (type == char.class) {
-                  out.writeChar(field.getChar(obj));
-               } else if (type == short.class) {
-                  out.writeShort(field.getShort(obj));
-               } else if (type == int.class) {
-                  out.writeInt(field.getInt(obj));
-               } else if (type == long.class) {
-                  out.writeLong(field.getLong(obj));
-               } else if (type == float.class) {
-                  out.writeFloat(field.getFloat(obj));
-               } else if (type == double.class) {
-                  out.writeDouble(field.getDouble(obj));
-               } else {
-                  throw new Error("Unknown primitive type");
-               }
-            } else {
-               Object fieldObj = field.get(obj);
-               serialize(typeMap.substitute(type), fieldObj);
-            }
+            data.put(field.getName(),
+               type == boolean.class ? field.getBoolean(obj) :
+               type == byte   .class ? field.getByte(obj)    :
+               type == char   .class ? field.getChar(obj)    :
+               type == short  .class ? field.getShort(obj)   :
+               type == int    .class ? field.getInt(obj)     :
+               type == long   .class ? field.getLong(obj)    :
+               type == float  .class ? field.getFloat(obj)   :
+               type == double .class ? field.getDouble(obj)  :
+               field.get(obj)
+            );
          } catch (IllegalAccessException exc) {
             // This can't happen.
             // !! We don't like this aspect of the reflection API.
             throw new Error(exc);
+         }
+      }
+      return data;
+   }
+   private void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
+      TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
+      Map<String,Object> data = oldObject(clazz, typeArgs, obj);
+      for (Field field : FieldCommon.serialFields(clazz)) {
+         out.writeUTF(field.getName());
+         Object value = data.get(field.getName());
+         Type type = field.getGenericType();
+         if (type == boolean.class) {
+            out.writeBoolean((Boolean)value);
+         } else if (type == byte.class) {
+            out.writeByte((Byte)value);
+         } else if (type == char.class) {
+            out.writeChar((Character)value);
+         } else if (type == short.class) {
+            out.writeShort((Short)value);
+         } else if (type == int.class) {
+            out.writeInt((Integer)value);
+         } else if (type == long.class) {
+            out.writeLong((Long)value);
+         } else if (type == float.class) {
+            out.writeFloat((Float)value);
+         } else if (type == double.class) {
+            out.writeDouble((Double)value);
+         } else {
+            serialize(typeMap.substitute(type), value);
          }
       }
       out.writeUTF("."); // End of class indicator.

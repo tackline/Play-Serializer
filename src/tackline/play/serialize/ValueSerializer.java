@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ValueSerializer extends FieldSerializer {
    /* pp */ ValueSerializer(DataOutput out) {
@@ -15,40 +17,26 @@ public class ValueSerializer extends FieldSerializer {
       new ValueSerializer(out).serialize(clazz, obj);
    }
    
-   @Override /* pp */ void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
+   @Override /* pp */ Map<String,Object> oldObject(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
+      Map<String,Object> data = new HashMap<>();
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
-      @SuppressWarnings("unused")
-      Constructor<?> ctor = FieldCommon.nullaryConstructor(clazz); // !! This will go.
+      // !! We could check whether it has the accompanying genesis method.
       // !! We don't do class hierarchies.
       
       for (Method method : serialMethods(clazz)) {
-         out.writeUTF(method.getName());
          Type type = method.getGenericReturnType();
          try {
-            if (type instanceof Class<?> && ((Class<?>)type).isPrimitive()) {
-               if (type == boolean.class) {
-                  out.writeBoolean((Boolean)method.invoke(obj));
-               } else if (type == byte.class) {
-                  out.writeByte((Byte)method.invoke(obj));
-               } else if (type == char.class) {
-                  out.writeChar((Character)method.invoke(obj));
-               } else if (type == short.class) {
-                  out.writeShort((Short)method.invoke(obj));
-               } else if (type == int.class) {
-                  out.writeInt((Integer)method.invoke(obj));
-               } else if (type == long.class) {
-                  out.writeLong((Long)method.invoke(obj));
-               } else if (type == float.class) {
-                  out.writeFloat((Float)method.invoke(obj));
-               } else if (type == double.class) {
-                  out.writeDouble((Double)method.invoke(obj));
-               } else {
-                  throw new Error("Unknown primitive type");
-               }
-            } else {
-               Object propertyObj = method.invoke(obj);
-               serialize(typeMap.substitute(type), propertyObj);
-            }
+            data.put(method.getName(), 
+               type == boolean.class ? (Boolean)method.invoke(obj) :
+               type == byte.class ? (Byte)method.invoke(obj) :
+               type == char.class ? (Character)method.invoke(obj) :
+               type == short.class ? (Short)method.invoke(obj) :
+               type == int.class ? (Integer)method.invoke(obj) :
+               type == long.class ? (Long)method.invoke(obj) :
+               type == float.class ? (Float)method.invoke(obj) :
+               type == double.class ? (Double)method.invoke(obj) :
+                method.invoke(obj)
+            );
          } catch (InvocationTargetException exc) {
             throw FieldCommon.throwUnchecked(exc);
          } catch (IllegalAccessException exc) {
@@ -57,7 +45,7 @@ public class ValueSerializer extends FieldSerializer {
             throw new Error(exc);
          }
       }
-      out.writeUTF("."); // End of class indicator.
+      return data;
    }
    
    

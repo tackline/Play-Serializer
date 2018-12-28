@@ -121,4 +121,8 @@ class FieldCommon { // !1 This name is no longer accurate.
          throw new Error(target);
       }
    }
+   /** Safe, but only if T is also safe. */
+   public static <T> List<T> safe(List<T> unsafe) {
+      return Collections.unmodifiableList(new ArrayList<>(unsafe));
+   }
 }
