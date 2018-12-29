@@ -51,48 +51,68 @@ public class FieldSerializer {
          }
       });
    }
-   private void backRef(Ref backRef, Type type, Object obj) throws IOException {
+   private void backRef(
+      Ref backRef, Type type, Object obj
+   ) throws IOException {
       if (!backRef.type.equals(type)) {
          throw exc("static type of object changed");
       }
       out.writeLong(backRef.id);
    }
-   private void labelForBackRef(Type type, Object obj) throws IOException {
+   private void labelForBackRef(
+      Type type, Object obj
+   ) throws IOException {
       long id = nextId++;
       backRefs.put(obj, new Ref(type, id));
       out.writeLong(id);
    }
-   /* pp */ Map<String,Object> oldObject(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
-      Map<String,Object> data = new HashMap<>();
-      for (Field field : FieldCommon.serialFields(clazz)) {
-         Type type = field.getGenericType();
-         try {
-            data.put(field.getName(),
-               type == boolean.class ? field.getBoolean(obj) :
-               type == byte   .class ? field.getByte(obj)    :
-               type == char   .class ? field.getChar(obj)    :
-               type == short  .class ? field.getShort(obj)   :
-               type == int    .class ? field.getInt(obj)     :
-               type == long   .class ? field.getLong(obj)    :
-               type == float  .class ? field.getFloat(obj)   :
-               type == double .class ? field.getDouble(obj)  :
-               field.get(obj)
-            );
-         } catch (IllegalAccessException exc) {
-            // This can't happen.
-            // !! We don't like this aspect of the reflection API.
-            throw new Error(exc);
-         }
+   /* pp */ Exploder oldObject(Class<?> clazz) throws IOException {
+      List<Field> fields = FieldCommon.serialFields(clazz);
+      List<String> names = new ArrayList<>();
+      for (Field field : fields) {
+         names.add(field.getName());
       }
-      return data;
+      List<String> names_ = Collections.unmodifiableList(names); // sigh sigh
+      return new Exploder() {
+         public List<String> names() {
+            return names_;
+         }
+         public List<Object> explode(Object obj) {
+            List<Object> data = new ArrayList<>();
+            for (Field field : fields) {
+               try {
+                  data.add(field.get(obj));
+               } catch (IllegalAccessException exc) {
+                  // This can't happen.
+                  // !! We don't like this aspect of the reflection API.
+                  throw new Error(exc);
+               }
+            }
+            return data;
+         }
+      };
    }
-   private void object(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
+   private void object(
+      Class<?> clazz, Type[] typeArgs, Object obj
+   ) throws IOException {
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
-      Map<String,Object> data = oldObject(clazz, typeArgs, obj);
-      for (Field field : FieldCommon.serialFields(clazz)) {
-         out.writeUTF(field.getName());
-         Object value = data.get(field.getName());
-         Type type = field.getGenericType();
+      ObjectFormat format = FieldCommon.format(clazz);
+      Exploder exploder = oldObject(clazz);
+      List<String> names = exploder.names();
+      List<Object> data = exploder.explode(obj);
+      int num = names.size();
+      for (int i=0; i<num; ++i) {
+         String name = names.get(i);
+         out.writeUTF(name);
+         int index = format.names().indexOf(name);
+         if (index == -1) {
+            // Java Serialization just ignores this. (Also the XML way.)
+            throw new IOException("field <"+name+"> in stream not in class");
+         }
+         //DataFormat dataFormat = format.dataFormats().get(index);
+         Type type = format.types().get(index);
+         Object value = data.get(i);
+//         Type type = field.getGenericType();
          if (type == boolean.class) {
             out.writeBoolean((Boolean)value);
          } else if (type == byte.class) {
@@ -115,7 +135,9 @@ public class FieldSerializer {
       }
       out.writeUTF("."); // End of class indicator.
    }
-   private void array(Type componentType, Object fieldObj) throws IOException {
+   private void array(
+      Type componentType, Object fieldObj
+   ) throws IOException {
       int len = Array.getLength(fieldObj);
       out.writeInt(len);
       if (componentType == boolean.class) {

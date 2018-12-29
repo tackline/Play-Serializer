@@ -64,7 +64,7 @@ public class FieldDeserializer {
    }
    private <T> T object(Type type, Class<T> clazz, Type[] typeArgs) throws IOException {
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
-      ObjectFormat format = format(clazz);
+      ObjectFormat format = FieldCommon.format(clazz);
       
       // !! We don't do class hierarchies.
 
@@ -95,10 +95,10 @@ public class FieldDeserializer {
          }
       }
       
-      return newObject(type, clazz, data, typeMap);
+      return (T)newObject(type, clazz, typeMap).implode(data);
    }
    // !! type & tpyeMap for ValueDeserializer
-   /* pp */ <T> T newObject(Type type, Class<T> clazz, Map<String,Object> data, TypeParamMap typeMap) throws IOException {
+   /* pp */ <T> Imploder newObject(Type type, Class<T> clazz, TypeParamMap typeMap) throws IOException {
       Constructor<T> ctor = FieldCommon.nullaryConstructor(clazz);
       java.security.AccessController.doPrivileged(
          (java.security.PrivilegedAction<Void>)() -> {
@@ -106,58 +106,45 @@ public class FieldDeserializer {
             return null;
          }
       );
-      T obj;
-      try {
-         obj = ctor.newInstance();
-      } catch (InstantiationException | IllegalAccessException | IllegalArgumentException exc) {
-         // !! We don't like this API - this cannot happen...
-         throw new Error(exc);
-      } catch (InvocationTargetException exc) {
-         throw FieldCommon.throwUnchecked(exc);
-      }
-      Map<String,Field> nameFields = FieldCommon.serialFields(clazz).stream()
-         .collect(Collectors.toMap(f -> f.getName(), f -> f));
-      
-      for (Map.Entry<String,Object> entry : data.entrySet()) {
-         String name = entry.getKey();
-         Object value = entry.getValue();
-         Field field = nameFields.get(name);
-         if (field == null) {
-            // Java Serialization just ignores this. (Also the XML way.)
-            throw new IOException("field <"+name+"> in stream but not in class");
+      Map<String,Field> nameFields =
+         FieldCommon.serialFields(clazz).stream()
+            .collect(Collectors.toMap(f -> f.getName(), f -> f));
+
+      return new Imploder() {
+         @Override public Object implode(Map<String, Object> data) {
+            T obj;
+            try {
+               obj = ctor.newInstance();
+            } catch (
+               InstantiationException |
+               IllegalAccessException |
+               IllegalArgumentException exc
+            ) {
+               // !! We don't like this API - this cannot happen...
+               throw new Error(exc);
+            } catch (InvocationTargetException exc) {
+               throw FieldCommon.throwUnchecked(exc);
+            }
+            for (
+               Map.Entry<String,Field> entry : nameFields.entrySet()
+            ) {
+               String name = entry.getKey();
+               if (!data.containsKey(name)) {
+                  throw new IllegalArgumentException(
+                     "Name not present in stream."
+                  );
+               }
+               try {
+                  entry.getValue().set(obj, data.get(name));
+               } catch (IllegalAccessException exc) {
+                  // This can't happen.
+                  // !! We don't like this aspect of the reflection API.
+                  throw new Error(exc);
+               }
+            }
+            return obj;
          }
-         try {
-            field.set(obj, value);
-         } catch (IllegalAccessException exc) {
-            // This can't happen.
-            // !! We don't like this aspect of the reflection API.
-            throw new Error(exc);
-         }
-      }
-      return obj;
-   }
-   private static ObjectFormat format(Class<?> clazz) {
-      Map<String,Field> nameFields = FieldCommon.serialFields(clazz).stream()
-         .collect(Collectors.toMap(f -> f.getName(), f -> f));
-      List<String> names = new ArrayList<>(nameFields.keySet());
-      List<DataFormat> dataFormats = new ArrayList<>();
-      List<Type> types = new ArrayList<>();
-      for (String name : names) {
-         Type fieldType = nameFields.get(name).getGenericType();
-         dataFormats.add(
-             fieldType == boolean.class ? DataFormat.BOOLEAN :
-             fieldType == byte   .class ? DataFormat.BYTE    :
-             fieldType == char   .class ? DataFormat.CHAR    :
-             fieldType == short  .class ? DataFormat.SHORT   :
-             fieldType == int    .class ? DataFormat.INT     :
-             fieldType == long   .class ? DataFormat.LONG    :
-             fieldType == float  .class ? DataFormat.FLOAT   :
-             fieldType == double .class ? DataFormat.DOUBLE  :
-                                          DataFormat.REF
-          );
-          types.add(fieldType); // !! For REF only
-      }
-      return ObjectFormat.of(names, dataFormats, types);
+      };
    }
    private Object array(Type componentType) throws IOException {
       int len = in.readInt();

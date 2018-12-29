@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,35 +18,38 @@ public class ValueSerializer extends FieldSerializer {
       new ValueSerializer(out).serialize(clazz, obj);
    }
    
-   @Override /* pp */ Map<String,Object> oldObject(Class<?> clazz, Type[] typeArgs, Object obj) throws IOException {
-      Map<String,Object> data = new HashMap<>();
-      TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
+   @Override /* pp */ Exploder oldObject(Class<?> clazz) throws IOException {
+      //TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
       // !! We could check whether it has the accompanying genesis method.
       // !! We don't do class hierarchies.
       
-      for (Method method : serialMethods(clazz)) {
-         Type type = method.getGenericReturnType();
-         try {
-            data.put(method.getName(), 
-               type == boolean.class ? (Boolean)method.invoke(obj) :
-               type == byte.class ? (Byte)method.invoke(obj) :
-               type == char.class ? (Character)method.invoke(obj) :
-               type == short.class ? (Short)method.invoke(obj) :
-               type == int.class ? (Integer)method.invoke(obj) :
-               type == long.class ? (Long)method.invoke(obj) :
-               type == float.class ? (Float)method.invoke(obj) :
-               type == double.class ? (Double)method.invoke(obj) :
-                method.invoke(obj)
-            );
-         } catch (InvocationTargetException exc) {
-            throw FieldCommon.throwUnchecked(exc);
-         } catch (IllegalAccessException exc) {
-            // This can't happen.
-            // !! We don't like this aspect of the reflection API.
-            throw new Error(exc);
-         }
+      List<Method> methods = serialMethods(clazz);
+      List<String> names = new ArrayList<>();
+      for (Method method : methods) {
+         names.add(method.getName());
       }
-      return data;
+      List<String> names_ = Collections.unmodifiableList(names); // sigh sigh
+      
+      return new Exploder() {
+         public List<String> names() {
+            return names_;
+         }
+         public List<Object> explode(Object obj) {
+            List<Object> data = new ArrayList<>();
+            for (Method method : methods) {
+               try {
+                  data.add(method.invoke(obj));
+               } catch (InvocationTargetException exc) {
+                  throw FieldCommon.throwUnchecked(exc);
+               } catch (IllegalAccessException exc) {
+                  // This can't happen.
+                  // !! We don't like this aspect of the reflection API.
+                  throw new Error(exc);
+               }
+            }
+            return data;
+         }
+      };
    }
    
    

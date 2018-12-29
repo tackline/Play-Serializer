@@ -2,6 +2,7 @@ package tackline.play.serialize;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 class FieldCommon { // !1 This name is no longer accurate.
    private FieldCommon() {
@@ -124,5 +125,28 @@ class FieldCommon { // !1 This name is no longer accurate.
    /** Safe, but only if T is also safe. */
    public static <T> List<T> safe(List<T> unsafe) {
       return Collections.unmodifiableList(new ArrayList<>(unsafe));
+   }
+   static ObjectFormat format(Class<?> clazz) {
+      Map<String,Field> nameFields = serialFields(clazz).stream()
+         .collect(Collectors.toMap(f -> f.getName(), f -> f));
+      List<String> names = new ArrayList<>(nameFields.keySet());
+      List<DataFormat> dataFormats = new ArrayList<>();
+      List<Type> types = new ArrayList<>();
+      for (String name : names) {
+         Type fieldType = nameFields.get(name).getGenericType();
+         dataFormats.add(
+             fieldType == boolean.class ? DataFormat.BOOLEAN :
+             fieldType == byte   .class ? DataFormat.BYTE    :
+             fieldType == char   .class ? DataFormat.CHAR    :
+             fieldType == short  .class ? DataFormat.SHORT   :
+             fieldType == int    .class ? DataFormat.INT     :
+             fieldType == long   .class ? DataFormat.LONG    :
+             fieldType == float  .class ? DataFormat.FLOAT   :
+             fieldType == double .class ? DataFormat.DOUBLE  :
+                                          DataFormat.REF
+          );
+          types.add(fieldType); // !! For REF only
+      }
+      return ObjectFormat.of(names, dataFormats, types);
    }
 }
