@@ -59,10 +59,14 @@ public class FieldDeserializer {
       }
       return ref.obj;
    }
-   private void labelForBackRef(Type type, Object obj) throws IOException {
+   private void labelForBackRef(
+      Type type, Object obj
+   ) throws IOException {
       backRefs.put(in.readLong(), new Ref(type, obj));
    }
-   private <T> T object(Type type, Class<T> clazz, Type[] typeArgs) throws IOException {
+   private <T> T object(
+      Type type, Class<T> clazz, Type[] typeArgs
+   ) throws IOException {
       TypeParamMap typeMap = new TypeParamMap(clazz, typeArgs);
       ObjectFormat format = FieldCommon.format(clazz);
       
@@ -76,8 +80,11 @@ public class FieldDeserializer {
          }
          int index = format.names().indexOf(name);
          if (index == -1) {
-            // Java Serialization just ignores this. (Also the XML way.)
-            throw new IOException("field <"+name+"> in stream not in class");
+            // Java Serialization just ignores this.
+            //   (Also the XML way.)
+            throw new IOException(
+               "field <"+name+"> in stream not in class"
+            );
          }
          DataFormat dataFormat = format.dataFormats().get(index);
          Type fieldType = format.types().get(index);
@@ -90,7 +97,9 @@ public class FieldDeserializer {
             case LONG   : data.put(name, in.readLong()); break;
             case FLOAT  : data.put(name, in.readFloat()); break;
             case DOUBLE : data.put(name, in.readDouble()); break;
-            case REF    : data.put(name, deserialize(typeMap.substitute(fieldType))); break;
+            case REF    : data.put(name,
+               deserialize(typeMap.substitute(fieldType))
+            ); break;
             default: throw new Error("???");
          }
       }

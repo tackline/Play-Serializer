@@ -106,31 +106,29 @@ public class FieldSerializer {
          out.writeUTF(name);
          int index = format.names().indexOf(name);
          if (index == -1) {
-            // Java Serialization just ignores this. (Also the XML way.)
-            throw new IOException("field <"+name+"> in stream not in class");
+            // Java Serialization just ignores this.
+            //   (Also the XML way.)
+            throw new IOException(
+               "field <"+name+"> in stream not in class"
+            );
          }
-         //DataFormat dataFormat = format.dataFormats().get(index);
+         DataFormat dataFormat = format.dataFormats().get(index);
          Type type = format.types().get(index);
          Object value = data.get(i);
 //         Type type = field.getGenericType();
-         if (type == boolean.class) {
-            out.writeBoolean((Boolean)value);
-         } else if (type == byte.class) {
-            out.writeByte((Byte)value);
-         } else if (type == char.class) {
-            out.writeChar((Character)value);
-         } else if (type == short.class) {
-            out.writeShort((Short)value);
-         } else if (type == int.class) {
-            out.writeInt((Integer)value);
-         } else if (type == long.class) {
-            out.writeLong((Long)value);
-         } else if (type == float.class) {
-            out.writeFloat((Float)value);
-         } else if (type == double.class) {
-            out.writeDouble((Double)value);
-         } else {
-            serialize(typeMap.substitute(type), value);
+         switch (dataFormat) {
+            case BOOLEAN: out.writeBoolean((Boolean)  value); break;
+            case BYTE   : out.writeByte(   (Byte)     value); break;
+            case CHAR   : out.writeChar(   (Character)value); break;
+            case SHORT  : out.writeShort(  (Short)    value); break;
+            case INT    : out.writeInt(    (Integer)  value); break;
+            case LONG   : out.writeLong(   (Long)     value); break;
+            case FLOAT  : out.writeFloat(  (Float)    value); break;
+            case DOUBLE : out.writeDouble( (Double)   value); break;
+            case REF    :
+               serialize(typeMap.substitute(type), value);
+            break;
+            default: throw new Error("???");
          }
       }
       out.writeUTF("."); // End of class indicator.
