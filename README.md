@@ -79,4 +79,4 @@ Anything else.
  - Why am I bothering with arrays of reference types - they suck. (A. to get a grip on what is going on in the reflection API.)
  - Eclipse is still annoying me with, amongst many other things, still inserting junk I did not type. Not to mention its searching and window handling.
  - git adds a lot of work, and github UI is poor.
-
+ - I definitely need a reflection API.

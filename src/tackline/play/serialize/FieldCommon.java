@@ -4,7 +4,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-class FieldCommon { // !1 This name is no longer accurate.
+class FieldCommon { // !! This name is no longer accurate.
    private FieldCommon() {
    }
    static <T> Constructor<T> nullaryConstructor(Class<T> clazz) {
@@ -59,34 +59,6 @@ class FieldCommon { // !1 This name is no longer accurate.
       }
       return serialFields;
    }
-   
-   static <R, EXC extends Throwable> R extractParameters(
-      Type type, ParameterExtract<R, EXC> extracted
-   ) throws EXC {
-      if (type instanceof Class<?>) {
-         Class<?> clazz = (Class<?>)type;
-         return clazz.isArray() ?
-            extracted.array(FieldCommon.componentType(clazz)) :
-            extracted.class_(clazz, new Type[0]);
-      } else if (type instanceof ParameterizedType) {
-         ParameterizedType parameterizedType = (ParameterizedType)type;
-         Type rawType = parameterizedType.getRawType();
-         if (rawType instanceof Class<?>) {
-            Type[] typeArgs = parameterizedType.getActualTypeArguments();
-            Class<?> rawClazz = (Class<?>)rawType;
-            // We lose typeArgs if this is an array???
-            return rawClazz.isArray() ?
-               extracted.array(FieldCommon.componentType(rawClazz)) :
-               extracted.class_(rawClazz, typeArgs);
-         } else {
-            throw new IllegalArgumentException("Don't know what that raw type is supposed to be");
-         }
-      } else if (type instanceof GenericArrayType) {
-         return extracted.array(FieldCommon.componentType(type));
-      } else {
-         throw new IllegalArgumentException("Type <"+type.getClass()+"> of Type not supported, <"+type+">");
-      }
-   }
    static <K,V> Map<K,V> zipMap(K[] keys, V[] values) {
       if (keys.length != values.length) {
          throw new IllegalArgumentException();
@@ -99,15 +71,6 @@ class FieldCommon { // !1 This name is no longer accurate.
          map.put(keys[i], values[i]);
       }
       return Collections.unmodifiableMap(map);
-   }
-   private static Type componentType(Type type) {
-      if (type instanceof Class<?>) {
-         return ((Class<?>)type).getComponentType();
-      } else if (type instanceof GenericArrayType) {
-         return ((GenericArrayType)type).getGenericComponentType();
-      } else {
-         throw new IllegalArgumentException("Unknown array type type");
-      }
    }
    
    static Error throwUnchecked(InvocationTargetException exc) {

@@ -422,12 +422,12 @@ public class TestDrive {
       return fieldFromBytes(valueToBytes(clazz, obj), clazz);
    }
    private static <T> T fieldFromBytes(byte[] bytes, Class<T> clazz) throws IOException {
-      return FieldDeserializer.deserialize(
+      return Deserializer.fieldDeserialize(
          fromBytes(bytes), clazz
       );
    }
    private static <T> T valueFromBytes(byte[] bytes, Class<T> clazz) throws IOException {
-      return ValueDeserializer.deserialize(
+      return Deserializer.valueDeserialize(
          fromBytes(bytes), clazz
       );
    }
@@ -436,12 +436,12 @@ public class TestDrive {
    }
    private static <T> byte[] valueToBytes(Class<T> clazz, T obj) throws IOException {
       ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-      ValueSerializer.serialize(new DataOutputStream(byteOut), clazz, obj);
+      Serializer.valueSerialize(new DataOutputStream(byteOut), clazz, obj);
       return byteOut.toByteArray();
    }
    private static <T> byte[] fieldToBytes(Class<T> clazz, T obj) throws IOException {
       ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-      FieldSerializer.serialize(new DataOutputStream(byteOut), clazz, obj);
+      Serializer.fieldSerialize(new DataOutputStream(byteOut), clazz, obj);
       return byteOut.toByteArray();
    }
    private static void asrt(boolean that, String msg) {
